@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required for RubyGems trusted publishing, which exchanges this token for
+      # a short-lived API key so no secret has to be stored. Free on public
+      # repositories.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+      # The tag only TRIGGERS this; RubyGems publishes whatever the gemspec says.
+      # Without this check, tagging v1.0.1 against a 1.0.0 gemspec republishes
+      # 1.0.0, or fails as "already pushed" with a confusing message.
+      - name: Tag must match the gem version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(ruby -Ilib -e 'require "vpndetection/version"; print VPNDetection::VERSION')"
+          if [ "$tag" != "$version" ] ; then
+            echo "tag $tag does not match VPNDetection::VERSION $version" >&2
+            exit 1
+          fi
+      - run: bundle exec rake test
+      # No floating major tag exists for this action, so it is pinned exactly.
+      - uses: rubygems/configure-rubygems-credentials@v2.1.0
+      - name: Build and push
+        run: |
+          gem build vpndetection.gemspec -o "pkg/vpndetection-${GITHUB_REF_NAME#v}.gem"
+          gem push "pkg/vpndetection-${GITHUB_REF_NAME#v}.gem"

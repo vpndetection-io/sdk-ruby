@@ -1,0 +1,10 @@
+/.bundle/
+/vendor/
+/pkg/
+/doc/
+/.yardoc/
+*.gem
+Gemfile.lock
+
+# Scratch tree scripts/generate.sh unpacks the generator's output into.
+/.gen/
