@@ -35,19 +35,31 @@ class DatabaseTest < Minitest::Test
     calls
   end
 
-  def test_list_unwraps_the_datasets_array
+  # A license is held against the FAMILY, and the ids a download takes hang off
+  # `versions`. Reading an id off the family is how list() -> download() was
+  # broken in every SDK while the published schema disagreed with the service.
+  def test_list_unwraps_the_families_and_their_versions
     stub_database('/api/v1/database/list', 200, {
                     'datasets' => [{
-                      'id' => 'vpn_ip_extended_v1', 'name' => 'VPN IP Extended',
+                      'base' => 'vpn_ip_extended', 'name' => 'VPN IP Extended',
                       'redistribution' => 'internal', 'in_term' => true,
-                      'formats' => [{ 'format' => 'csvgz', 'bytes' => 1024 }],
+                      'standing' => 'licensed',
+                      'versions' => [{
+                        'id' => 'vpn_ip_extended_v1', 'version' => 1,
+                        'formats' => [{ 'format' => 'csvgz', 'bytes' => 1024 }],
+                        'sampleFormats' => ['csvgz'],
+                      }],
                     }],
                   })
     datasets = @client.database.list
 
     assert_equal 1, datasets.length
-    assert_equal 'vpn_ip_extended_v1', datasets.first.id
-    assert_equal 'csvgz', datasets.first.formats.first.format
+    assert_equal 'vpn_ip_extended', datasets.first.base
+    assert_equal 'licensed', datasets.first.standing
+    assert_equal 'vpn_ip_extended_v1', datasets.first.versions.first.id
+    assert_equal 1, datasets.first.versions.first.version
+    assert_equal 'csvgz', datasets.first.versions.first.formats.first.format
+    assert_equal ['csvgz'], datasets.first.versions.first.sample_formats
   end
 
   def test_metadata_returns_the_document_itself

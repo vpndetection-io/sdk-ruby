@@ -11,7 +11,11 @@ module VPNDetection
       @retries = retries
     end
 
-    # The datasets your organization is licensed to download.
+    # The dataset FAMILIES your organization is licensed to download.
+    #
+    # A license is held against the family, while a download names one version,
+    # so the ids {#download_url} and {#checksums} take come from each family's
+    # `versions`, not from the family itself.
     def list
       call { @api.list_databases.datasets }
     end

@@ -14,36 +14,49 @@ require 'date'
 require 'time'
 
 module VPNDetection
-  class DatasetMetadata < ApiModelBase
+  class LicensedVersion < ApiModelBase
+    # The versioned dataset id, e.g. `vpn_ip_v1`. Pass this to download.
     attr_accessor :id
 
-    # How often a new build is published
-    attr_accessor :update_freq
+    attr_accessor :version
 
-    attr_accessor :updated
+    attr_accessor :summary
 
-    # Row count in the current build
-    attr_accessor :entries
+    attr_accessor :formats
 
-    # Columns, keyed by format
-    attr_accessor :schema
+    # The formats an evaluation sample is published in, if any.
+    attr_accessor :sample_formats
 
-    # A few real rows, keyed by format
-    attr_accessor :sample
+    class EnumAttributeValidator
+      attr_reader :datatype
+      attr_reader :allowable_values
 
-    # Bytes per format
-    attr_accessor :size
+      def initialize(datatype, allowable_values)
+        @allowable_values = allowable_values.map do |value|
+          case datatype.to_s
+          when /Integer/i
+            value.to_i
+          when /Float/i
+            value.to_f
+          else
+            value
+          end
+        end
+      end
+
+      def valid?(value)
+        !value || allowable_values.include?(value)
+      end
+    end
 
     # Attribute mapping from ruby-style variable name to JSON key.
     def self.attribute_map
       {
         :'id' => :'id',
-        :'update_freq' => :'update_freq',
-        :'updated' => :'updated',
-        :'entries' => :'entries',
-        :'schema' => :'schema',
-        :'sample' => :'sample',
-        :'size' => :'size'
+        :'version' => :'version',
+        :'summary' => :'summary',
+        :'formats' => :'formats',
+        :'sample_formats' => :'sampleFormats'
       }
     end
 
@@ -61,12 +74,10 @@ module VPNDetection
     def self.openapi_types
       {
         :'id' => :'String',
-        :'update_freq' => :'String',
-        :'updated' => :'Date',
-        :'entries' => :'Integer',
-        :'schema' => :'Hash<String, Array<DatasetMetadataColumn>>',
-        :'sample' => :'Hash<String, Array<Object>>',
-        :'size' => :'Hash<String, Integer>'
+        :'version' => :'Integer',
+        :'summary' => :'String',
+        :'formats' => :'Array<DatasetFormatSize>',
+        :'sample_formats' => :'Array<String>'
       }
     end
 
@@ -80,14 +91,14 @@ module VPNDetection
     # @param [Hash] attributes Model attributes in the form of hash
     def initialize(attributes = {})
       if (!attributes.is_a?(Hash))
-        fail ArgumentError, "The input argument (attributes) must be a hash in `VPNDetection::DatasetMetadata` initialize method"
+        fail ArgumentError, "The input argument (attributes) must be a hash in `VPNDetection::LicensedVersion` initialize method"
       end
 
       # check to see if the attribute exists and convert string to symbol for hash key
       acceptable_attribute_map = self.class.acceptable_attribute_map
       attributes = attributes.each_with_object({}) { |(k, v), h|
         if (!acceptable_attribute_map.key?(k.to_sym))
-          fail ArgumentError, "`#{k}` is not a valid attribute in `VPNDetection::DatasetMetadata`. Please check the name to make sure it's valid. List of attributes: " + acceptable_attribute_map.keys.inspect
+          fail ArgumentError, "`#{k}` is not a valid attribute in `VPNDetection::LicensedVersion`. Please check the name to make sure it's valid. List of attributes: " + acceptable_attribute_map.keys.inspect
         end
         h[k.to_sym] = v
       }
@@ -98,39 +109,27 @@ module VPNDetection
         self.id = nil
       end
 
-      if attributes.key?(:'update_freq')
-        self.update_freq = attributes[:'update_freq']
-      end
-
-      if attributes.key?(:'updated')
-        self.updated = attributes[:'updated']
+      if attributes.key?(:'version')
+        self.version = attributes[:'version']
       else
-        self.updated = nil
+        self.version = nil
       end
 
-      if attributes.key?(:'entries')
-        self.entries = attributes[:'entries']
-      else
-        self.entries = nil
+      if attributes.key?(:'summary')
+        self.summary = attributes[:'summary']
       end
 
-      if attributes.key?(:'schema')
-        if (value = attributes[:'schema']).is_a?(Hash)
-          self.schema = value
+      if attributes.key?(:'formats')
+        if (value = attributes[:'formats']).is_a?(Array)
+          self.formats = value
         end
       else
-        self.schema = nil
+        self.formats = nil
       end
 
-      if attributes.key?(:'sample')
-        if (value = attributes[:'sample']).is_a?(Hash)
-          self.sample = value
-        end
-      end
-
-      if attributes.key?(:'size')
-        if (value = attributes[:'size']).is_a?(Hash)
-          self.size = value
+      if attributes.key?(:'sample_formats')
+        if (value = attributes[:'sample_formats']).is_a?(Array)
+          self.sample_formats = value
         end
       end
     end
@@ -144,16 +143,12 @@ module VPNDetection
         invalid_properties.push('invalid value for "id", id cannot be nil.')
       end
 
-      if @updated.nil?
-        invalid_properties.push('invalid value for "updated", updated cannot be nil.')
+      if @version.nil?
+        invalid_properties.push('invalid value for "version", version cannot be nil.')
       end
 
-      if @entries.nil?
-        invalid_properties.push('invalid value for "entries", entries cannot be nil.')
-      end
-
-      if @schema.nil?
-        invalid_properties.push('invalid value for "schema", schema cannot be nil.')
+      if @formats.nil?
+        invalid_properties.push('invalid value for "formats", formats cannot be nil.')
       end
 
       invalid_properties
@@ -164,9 +159,8 @@ module VPNDetection
     def valid?
       warn '[DEPRECATED] the `valid?` method is obsolete'
       return false if @id.nil?
-      return false if @updated.nil?
-      return false if @entries.nil?
-      return false if @schema.nil?
+      return false if @version.nil?
+      return false if @formats.nil?
       true
     end
 
@@ -181,33 +175,23 @@ module VPNDetection
     end
 
     # Custom attribute writer method with validation
-    # @param [Object] updated Value to be assigned
-    def updated=(updated)
-      if updated.nil?
-        fail ArgumentError, 'updated cannot be nil'
+    # @param [Object] version Value to be assigned
+    def version=(version)
+      if version.nil?
+        fail ArgumentError, 'version cannot be nil'
       end
 
-      @updated = updated
+      @version = version
     end
 
     # Custom attribute writer method with validation
-    # @param [Object] entries Value to be assigned
-    def entries=(entries)
-      if entries.nil?
-        fail ArgumentError, 'entries cannot be nil'
+    # @param [Object] formats Value to be assigned
+    def formats=(formats)
+      if formats.nil?
+        fail ArgumentError, 'formats cannot be nil'
       end
 
-      @entries = entries
-    end
-
-    # Custom attribute writer method with validation
-    # @param [Object] schema Value to be assigned
-    def schema=(schema)
-      if schema.nil?
-        fail ArgumentError, 'schema cannot be nil'
-      end
-
-      @schema = schema
+      @formats = formats
     end
 
     # Checks equality by comparing each attribute.
@@ -216,12 +200,10 @@ module VPNDetection
       return true if self.equal?(o)
       self.class == o.class &&
           id == o.id &&
-          update_freq == o.update_freq &&
-          updated == o.updated &&
-          entries == o.entries &&
-          schema == o.schema &&
-          sample == o.sample &&
-          size == o.size
+          version == o.version &&
+          summary == o.summary &&
+          formats == o.formats &&
+          sample_formats == o.sample_formats
     end
 
     # @see the `==` method
@@ -233,7 +215,7 @@ module VPNDetection
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [id, update_freq, updated, entries, schema, sample, size].hash
+      [id, version, summary, formats, sample_formats].hash
     end
 
     # Builds the object from hash
