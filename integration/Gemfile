@@ -1,0 +1,12 @@
+# frozen_string_literal: true
+
+# The PUBLISHED gem, from RubyGems, never the source beside this directory. The
+# whole point of this package is to exercise what a stranger installs, and a
+# `path:` here would make every test pass against the working tree instead.
+source 'https://rubygems.org'
+
+gem 'vpndetection', '~> 1.0'
+
+# minitest 6 requires Ruby 3.2, and the gem supports 3.1.
+gem 'minitest', '~> 5.25'
+gem 'rake', '~> 13.0'
