@@ -32,8 +32,11 @@ module VPNDetection
       RETRYABLE.include?(@kind)
     end
 
-    def self.from_status(status, headers, body)
-      message = message_of(body) || "request failed with status #{status}"
+    # `message:` stands in for the response body, for a response whose body must
+    # not be read: an object storage error page has no bounded size, so a refusal
+    # from it is classified on the status alone.
+    def self.from_status(status, headers, body, message: nil)
+      message ||= message_of(body) || "request failed with status #{status}"
       retry_after = parse_retry_after(header(headers, 'retry-after'))
 
       case status

@@ -56,6 +56,31 @@ module VPNDetection
       request
     end
 
+    # A GET for the presigned link the download endpoint hands out.
+    #
+    # Built here rather than through {#build_request} so it carries NO
+    # credential: the presigned URL authorizes itself, and forwarding the API key
+    # would hand it to a host with no business holding it. Redirects ARE followed,
+    # unlike every other request this client makes, because this one IS the far
+    # side of a redirect; the guard exists to stop the API's own 302 pulling a
+    # dataset into memory, not to stop object storage from moving a bucket.
+    #
+    # The whole-request timeout is dropped and only the connect phase is bounded.
+    # Ten seconds is a sane ceiling on a lookup and the wrong one on 1.79 GB.
+    def storage_request(url)
+      options = {
+        method: :get,
+        headers: { 'User-Agent' => @default_headers['User-Agent'] },
+        followlocation: true,
+        maxredirs: 5,
+        connecttimeout: @config.timeout,
+        ssl_verifypeer: @config.verify_ssl,
+        ssl_verifyhost: @config.verify_ssl_host ? 2 : 0,
+      }
+      options[:cainfo] = @config.ssl_ca_cert if @config.ssl_ca_cert
+      Typhoeus::Request.new(url, options)
+    end
+
     def lookup_request(ip)
       build_request(
         :GET, LOOKUP_PATH.sub('{ip}', CGI.escape(ip.to_s)),
