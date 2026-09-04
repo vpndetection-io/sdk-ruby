@@ -93,7 +93,10 @@ class DatabaseTest < Minitest::Test
     calls = stub_database('/api/v1/database/downloads', 200, {
                             'downloads' => [{
                               'dataset_id' => 'vpn_ip_extended_v1', 'format' => 'csvgz',
-                              'outcome' => 'ok', 'bytes' => 10, 'created' => '2026-09-02T10:00:00Z',
+                              'outcome' => 'ok', 'sample' => false, 'bytes' => 10,
+                              'http_status' => 302, 'apikey_id' => 'mk_1234abcd',
+                              'client_ip' => '203.0.113.7', 'user_agent' => 'vpndetection-ruby/1.0.0',
+                              'created' => '2026-09-02T10:00:00Z',
                             }],
                           })
     downloads = @client.database.downloads(limit: 5)

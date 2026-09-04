@@ -34,6 +34,12 @@ module VPNDetection
     # Bytes per format
     attr_accessor :size
 
+    # Bytes per format of the evaluation sample, where one is published
+    attr_accessor :sample_size
+
+    # Row count in the evaluation sample
+    attr_accessor :sample_entries
+
     # Attribute mapping from ruby-style variable name to JSON key.
     def self.attribute_map
       {
@@ -43,7 +49,9 @@ module VPNDetection
         :'entries' => :'entries',
         :'schema' => :'schema',
         :'sample' => :'sample',
-        :'size' => :'size'
+        :'size' => :'size',
+        :'sample_size' => :'sample_size',
+        :'sample_entries' => :'sample_entries'
       }
     end
 
@@ -66,7 +74,9 @@ module VPNDetection
         :'entries' => :'Integer',
         :'schema' => :'Hash<String, Array<DatasetMetadataColumn>>',
         :'sample' => :'Hash<String, Array<Object>>',
-        :'size' => :'Hash<String, Integer>'
+        :'size' => :'Hash<String, Integer>',
+        :'sample_size' => :'Hash<String, Integer>',
+        :'sample_entries' => :'Integer'
       }
     end
 
@@ -132,6 +142,16 @@ module VPNDetection
         if (value = attributes[:'size']).is_a?(Hash)
           self.size = value
         end
+      end
+
+      if attributes.key?(:'sample_size')
+        if (value = attributes[:'sample_size']).is_a?(Hash)
+          self.sample_size = value
+        end
+      end
+
+      if attributes.key?(:'sample_entries')
+        self.sample_entries = attributes[:'sample_entries']
       end
     end
 
@@ -221,7 +241,9 @@ module VPNDetection
           entries == o.entries &&
           schema == o.schema &&
           sample == o.sample &&
-          size == o.size
+          size == o.size &&
+          sample_size == o.sample_size &&
+          sample_entries == o.sample_entries
     end
 
     # @see the `==` method
@@ -233,7 +255,7 @@ module VPNDetection
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [id, update_freq, updated, entries, schema, sample, size].hash
+      [id, update_freq, updated, entries, schema, sample, size, sample_size, sample_entries].hash
     end
 
     # Builds the object from hash

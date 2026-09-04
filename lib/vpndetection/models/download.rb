@@ -14,6 +14,7 @@ require 'date'
 require 'time'
 
 module VPNDetection
+  # One download ATTEMPT, refusals included - a denial is what answers \"it stopped working\", so they are listed rather than dropped. 
   class Download < ApiModelBase
     attr_accessor :dataset_id
 
@@ -21,7 +22,20 @@ module VPNDetection
 
     attr_accessor :outcome
 
+    # The evaluation sample rather than the database itself.
+    attr_accessor :sample
+
+    # Object size at redirect time, NOT bytes delivered: the transfer is a presigned redirect straight to object storage, so we never observe it. 
     attr_accessor :bytes
+
+    attr_accessor :http_status
+
+    # The key that made the request. Null when the org acted through the console rather than through a key. 
+    attr_accessor :apikey_id
+
+    attr_accessor :client_ip
+
+    attr_accessor :user_agent
 
     attr_accessor :created
 
@@ -53,7 +67,12 @@ module VPNDetection
         :'dataset_id' => :'dataset_id',
         :'format' => :'format',
         :'outcome' => :'outcome',
+        :'sample' => :'sample',
         :'bytes' => :'bytes',
+        :'http_status' => :'http_status',
+        :'apikey_id' => :'apikey_id',
+        :'client_ip' => :'client_ip',
+        :'user_agent' => :'user_agent',
         :'created' => :'created'
       }
     end
@@ -74,7 +93,12 @@ module VPNDetection
         :'dataset_id' => :'String',
         :'format' => :'String',
         :'outcome' => :'String',
+        :'sample' => :'Boolean',
         :'bytes' => :'Integer',
+        :'http_status' => :'Integer',
+        :'apikey_id' => :'String',
+        :'client_ip' => :'String',
+        :'user_agent' => :'String',
         :'created' => :'Time'
       }
     end
@@ -83,6 +107,10 @@ module VPNDetection
     def self.openapi_nullable
       Set.new([
         :'bytes',
+        :'http_status',
+        :'apikey_id',
+        :'client_ip',
+        :'user_agent',
       ])
     end
 
@@ -120,8 +148,40 @@ module VPNDetection
         self.outcome = nil
       end
 
+      if attributes.key?(:'sample')
+        self.sample = attributes[:'sample']
+      else
+        self.sample = nil
+      end
+
       if attributes.key?(:'bytes')
         self.bytes = attributes[:'bytes']
+      else
+        self.bytes = nil
+      end
+
+      if attributes.key?(:'http_status')
+        self.http_status = attributes[:'http_status']
+      else
+        self.http_status = nil
+      end
+
+      if attributes.key?(:'apikey_id')
+        self.apikey_id = attributes[:'apikey_id']
+      else
+        self.apikey_id = nil
+      end
+
+      if attributes.key?(:'client_ip')
+        self.client_ip = attributes[:'client_ip']
+      else
+        self.client_ip = nil
+      end
+
+      if attributes.key?(:'user_agent')
+        self.user_agent = attributes[:'user_agent']
+      else
+        self.user_agent = nil
       end
 
       if attributes.key?(:'created')
@@ -148,6 +208,10 @@ module VPNDetection
         invalid_properties.push('invalid value for "outcome", outcome cannot be nil.')
       end
 
+      if @sample.nil?
+        invalid_properties.push('invalid value for "sample", sample cannot be nil.')
+      end
+
       if @created.nil?
         invalid_properties.push('invalid value for "created", created cannot be nil.')
       end
@@ -164,6 +228,7 @@ module VPNDetection
       return false if @outcome.nil?
       outcome_validator = EnumAttributeValidator.new('String', ["ok", "unauthorized", "denied", "expired", "unknown", "unavailable"])
       return false unless outcome_validator.valid?(@outcome)
+      return false if @sample.nil?
       return false if @created.nil?
       true
     end
@@ -199,6 +264,16 @@ module VPNDetection
     end
 
     # Custom attribute writer method with validation
+    # @param [Object] sample Value to be assigned
+    def sample=(sample)
+      if sample.nil?
+        fail ArgumentError, 'sample cannot be nil'
+      end
+
+      @sample = sample
+    end
+
+    # Custom attribute writer method with validation
     # @param [Object] created Value to be assigned
     def created=(created)
       if created.nil?
@@ -216,7 +291,12 @@ module VPNDetection
           dataset_id == o.dataset_id &&
           format == o.format &&
           outcome == o.outcome &&
+          sample == o.sample &&
           bytes == o.bytes &&
+          http_status == o.http_status &&
+          apikey_id == o.apikey_id &&
+          client_ip == o.client_ip &&
+          user_agent == o.user_agent &&
           created == o.created
     end
 
@@ -229,7 +309,7 @@ module VPNDetection
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [dataset_id, format, outcome, bytes, created].hash
+      [dataset_id, format, outcome, sample, bytes, http_status, apikey_id, client_ip, user_agent, created].hash
     end
 
     # Builds the object from hash
