@@ -35,5 +35,8 @@ jobs:
       - uses: rubygems/configure-rubygems-credentials@v2.1.0
       - name: Build and push
         run: |
+          # `gem build -o` writes the file but will not create its parent,
+          # so a clean checkout fails on ENOENT before it ever reaches push.
+          mkdir -p pkg
           gem build vpndetection.gemspec -o "pkg/vpndetection-${GITHUB_REF_NAME#v}.gem"
           gem push "pkg/vpndetection-${GITHUB_REF_NAME#v}.gem"
