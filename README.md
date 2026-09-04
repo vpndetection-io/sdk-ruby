@@ -48,22 +48,6 @@ result.is_hosting           # => true
 result.hosting['provider']  # => "M247"
 ```
 
-### Fields your plan does not include
-
-Every field beyond `ip` and `is_vpn` is present when your plan includes it and **absent** when it does not. Absent is `nil`, and `nil` is not `false`: `nil` means "not in your plan", `false` means "we checked, and no".
-
-Ruby makes that distinction easy to lose, because `nil` and `false` are both falsy, so `if result.is_hosting` treats "not in your plan" as "not a hosting address". The library gives you three ways to read a field, and which one you want depends on the question:
-
-```ruby
-result.is_hosting               # => nil, false or true. The answer as served.
-result.hosting?                 # => false. The flag, with an absent field read as false.
-result.included?(:is_hosting)   # => false. Whether your plan carries the field at all.
-```
-
-Use the predicate (`hosting?`) when you only care whether the address is flagged; it always answers `true` or `false`. Read the field itself (`is_hosting`) when telling the three states apart matters, and ask `included?` when you want to know whether an upgrade would answer the question. Every classification has all three forms: `is_vpn`/`vpn?`, `is_relay`/`relay?`, `is_tor`/`tor?`, `is_cdn`/`cdn?`, `is_resproxy`/`resproxy?`, `is_dcproxy`/`dcproxy?`, `is_mobproxy`/`mobproxy?`.
-
-Detail objects follow the same rule with one addition: absent (`nil`) means your plan does not include it, empty (`{}`) means your plan includes it and the flag above it is false, and a populated one always carries every one of its keys. They are the hashes exactly as the API sent them, so the keys are strings: `result.vpn['last_seen']`. The whole response is on `result.raw`.
-
 ### Batch lookup
 
 You can do batch lookups with a list, which parallelizes requests for you efficiently:
@@ -158,6 +142,15 @@ url = client.database.download_url('vpn_ip_extended_v1', 'mmdb')
 ```
 
 `download_url` returns a time-limited link rather than the bytes, so you choose how to transfer a file that can run to gigabytes.
+
+### Absent is not false
+
+Every field beyond `ip` and `is_vpn` is present when your plan includes it and `nil` when it does not. `nil` means "not in your plan"; `false` means "we checked, and no".
+
+```ruby
+result.hosting?                 # false when absent, for when you only want the flag
+result.included?(:is_hosting)   # whether your plan carries the field at all
+```
 
 ## Other Libraries
 
