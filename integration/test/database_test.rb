@@ -15,7 +15,7 @@ require 'tmpdir'
 require_relative '../lib/staging'
 
 class DatabaseTest < Minitest::Test
-  # The max organization licenses cdn_ip for redistribution, and at ~10 KB it is
+  # The max organization licenses cdn_ip for license_type, and at ~10 KB it is
   # the only dataset small enough to move in CI.
   DATASET_ID = 'cdn_ip_v1'
   FORMAT = 'csvgz'
@@ -53,7 +53,7 @@ class DatabaseTest < Minitest::Test
       refute_nil family.name, "#{family.base} carries no name"
       assert_includes %w[expired licensed unlicensed], family.standing,
                       "#{family.base} carries an undocumented standing"
-      assert_includes %w[evaluation internal redistribute], family.redistribution,
+      assert_includes %w[evaluation internal redistribute], family.license_type,
                       "#{family.base} carries an undocumented right"
       # The point of the family shape: a license covers the family, and these are
       # the ids the download and checksum calls take. Before the spec was

@@ -42,7 +42,7 @@ class DatabaseTest < Minitest::Test
     stub_database('/api/v1/database/list', 200, {
                     'datasets' => [{
                       'base' => 'vpn_ip_extended', 'name' => 'VPN IP Extended',
-                      'redistribution' => 'internal', 'in_term' => true,
+                      'license_type' => 'standard', 'in_term' => true,
                       'standing' => 'licensed',
                       'versions' => [{
                         'id' => 'vpn_ip_extended_v1', 'version' => 1,
