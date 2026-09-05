@@ -137,6 +137,23 @@ class DatabaseTest < Minitest::Test
     server&.stop
   end
 
+  # The sibling brand's suite caught this and this one had no equivalent, so the
+  # same leak sat here unnoticed: the generated client applies EVERY security
+  # scheme the spec declares, and the spec declares `?apikey=` for curl users.
+  def test_the_key_travels_as_a_bearer_header_and_never_in_the_query
+    server = TestServer.new(delay: 0.0) { |_path| [200, '{"datasets":[]}'] }
+    client = VPNDetection::Client.new(base_url: server.base_url, api_key: 'k', retries: 0)
+    Typhoeus::Config.block_connection = false
+
+    client.database.list
+
+    assert_equal 1, server.paths.length
+    refute_includes server.paths.first, 'apikey'
+    refute_includes server.paths.first, 'k='
+  ensure
+    server&.stop
+  end
+
   def test_an_unknown_dataset_is_a_client_error_and_is_not_retried
     calls = stub_database('/api/v1/database/metadata', 404, { 'rc' => 'NOT_FOUND' })
     client = VPNDetection::Client.new(api_key: 'k', retries: 2)

@@ -53,7 +53,7 @@ class DatabaseTest < Minitest::Test
       refute_nil family.name, "#{family.base} carries no name"
       assert_includes %w[expired licensed unlicensed], family.standing,
                       "#{family.base} carries an undocumented standing"
-      assert_includes %w[evaluation internal redistribute], family.license_type,
+      assert_includes %w[evaluation standard redistribute], family.license_type,
                       "#{family.base} carries an undocumented right"
       # The point of the family shape: a license covers the family, and these are
       # the ids the download and checksum calls take. Before the spec was
