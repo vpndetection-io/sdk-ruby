@@ -34,13 +34,13 @@ module VPNDetection
     # Whether the address belongs to a CDN. Starter and above.
     attr_accessor :is_cdn
 
-    # Whether the address was seen in a residential proxy pool. Max only.
+    # Whether the address was seen in a residential proxy pool. Scale and above.
     attr_accessor :is_resproxy
 
-    # Whether the address was seen in a datacenter proxy pool. Max only.
+    # Whether the address was seen in a datacenter proxy pool. Scale and above.
     attr_accessor :is_dcproxy
 
-    # Whether the address was seen in a mobile proxy pool. Max only.
+    # Whether the address was seen in a mobile proxy pool. Scale and above.
     attr_accessor :is_mobproxy
 
     # Detail for `is_vpn`. Empty when `is_vpn` is false. Starter and above. 
