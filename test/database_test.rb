@@ -42,8 +42,10 @@ class DatabaseTest < Minitest::Test
     stub_database('/api/v1/database/list', 200, {
                     'datasets' => [{
                       'base' => 'vpn_ip_extended', 'name' => 'VPN IP Extended',
-                      'license_type' => 'standard', 'in_term' => true,
-                      'standing' => 'licensed',
+                      'summary' => 'extended rows', 'license_type' => 'standard',
+                      'starts' => '2026-01-01T00:00:00.000Z', 'expires' => nil,
+                      'renews_at' => nil, 'notice_due_at' => nil,
+                      'in_term' => true, 'standing' => 'licensed',
                       'versions' => [{
                         'id' => 'vpn_ip_extended_v1', 'version' => 1,
                         'formats' => [{ 'format' => 'csvgz', 'bytes' => 1024 }],

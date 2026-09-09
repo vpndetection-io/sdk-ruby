@@ -152,6 +152,8 @@ module VPNDetection
 
       if attributes.key?(:'summary')
         self.summary = attributes[:'summary']
+      else
+        self.summary = nil
       end
 
       if attributes.key?(:'license_type')
@@ -162,18 +164,26 @@ module VPNDetection
 
       if attributes.key?(:'starts')
         self.starts = attributes[:'starts']
+      else
+        self.starts = nil
       end
 
       if attributes.key?(:'expires')
         self.expires = attributes[:'expires']
+      else
+        self.expires = nil
       end
 
       if attributes.key?(:'renews_at')
         self.renews_at = attributes[:'renews_at']
+      else
+        self.renews_at = nil
       end
 
       if attributes.key?(:'notice_due_at')
         self.notice_due_at = attributes[:'notice_due_at']
+      else
+        self.notice_due_at = nil
       end
 
       if attributes.key?(:'in_term')
@@ -210,6 +220,10 @@ module VPNDetection
         invalid_properties.push('invalid value for "name", name cannot be nil.')
       end
 
+      if @summary.nil?
+        invalid_properties.push('invalid value for "summary", summary cannot be nil.')
+      end
+
       if @license_type.nil?
         invalid_properties.push('invalid value for "license_type", license_type cannot be nil.')
       end
@@ -235,6 +249,7 @@ module VPNDetection
       warn '[DEPRECATED] the `valid?` method is obsolete'
       return false if @base.nil?
       return false if @name.nil?
+      return false if @summary.nil?
       return false if @license_type.nil?
       license_type_validator = EnumAttributeValidator.new('String', ["evaluation", "standard", "redistribute"])
       return false unless license_type_validator.valid?(@license_type)
@@ -264,6 +279,16 @@ module VPNDetection
       end
 
       @name = name
+    end
+
+    # Custom attribute writer method with validation
+    # @param [Object] summary Value to be assigned
+    def summary=(summary)
+      if summary.nil?
+        fail ArgumentError, 'summary cannot be nil'
+      end
+
+      @summary = summary
     end
 
     # Custom attribute writer method checking allowed values (enum).
