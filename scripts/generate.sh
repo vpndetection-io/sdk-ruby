@@ -24,14 +24,23 @@ PROPS="gemName=vpndetection,moduleName=VPNDetection,hideGenerationTimestamp=true
 # gem's own exception base class, so the two would be the same constant.
 MODELS="Error=ErrorEnvelope"
 
-# The four wrapper schemas are inline in the spec, so the generator names them after
-# the operation and status code (DatabaseChecksum200ResponseChecksums). One of those
-# is public API here. --model-name-mappings does NOT reach an inline schema; only
-# --inline-schema-name-mappings does, keyed by the generator's own placeholder name.
-NAMES="listDatabases_200_response=DatasetList"
+# The generated wire classes are named from the TAG, so the Database tag would
+# take `DatabaseApi` - which is the name the hand-written accessor wants, since
+# `client.database` is a DatabaseApi in every brand. internetdata only avoids
+# the clash because its tag happens to be "Database v2". Suffix the generated
+# ones instead of relying on a tag staying inconvenient; they ARE the wire
+# layer, so the name is honest. `Database` itself is the family MODEL now.
+
+# The response wrappers are inline in the spec, so the generator names them after
+# the operation and status code (DatabaseChecksum200Response). --model-name-mappings
+# does NOT reach an inline schema; only --inline-schema-name-mappings does, keyed by
+# the generator's own placeholder name.
+#
+# The digests are NOT here any more: they became a named `DbChecksums` schema, so
+# the generator emits that name on its own.
+NAMES="listDatabases_200_response=DatabaseList"
 NAMES="${NAMES},listDownloads_200_response=DownloadList"
-NAMES="${NAMES},databaseChecksum_200_response=DatasetChecksumsResponse"
-NAMES="${NAMES},databaseChecksum_200_response_checksums=DatasetChecksums"
+NAMES="${NAMES},databaseChecksum_200_response=DatabaseChecksumsResponse"
 
 rm -rf .gen
 mkdir -p .gen
@@ -44,6 +53,7 @@ docker run --rm \
     -g ruby --library typhoeus \
     -o /out \
     --model-name-mappings "$MODELS" \
+    --api-name-suffix WireApi \
     --inline-schema-name-mappings "$NAMES" \
     --additional-properties="$PROPS" \
     >/dev/null

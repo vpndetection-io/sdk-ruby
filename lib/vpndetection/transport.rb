@@ -8,7 +8,7 @@ module VPNDetection
   # The generated wire client, with the three things it gets wrong for this API
   # corrected in one place.
   class Transport < ApiClient
-    # The same path template the generated LookupApi holds. Both are asserted
+    # The same path template the generated LookupWireApi holds. Both are asserted
     # against each other in the test suite, because the batch builds its own
     # requests to queue them on a hydra and cannot go through the generated
     # method, which runs each request as it builds it.

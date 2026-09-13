@@ -36,7 +36,7 @@ module VPNDetection
       @cache = cache ? Cache.new(max_size: cache_max_size, ttl: cache_ttl) : nil
       @concurrency = concurrency
       @retries = retries
-      @database = Database.new(@transport, retries: retries)
+      @database = DatabaseApi.new(@transport, retries: retries)
     end
 
     # Whether an address is private, loopback, link-local, documentation,

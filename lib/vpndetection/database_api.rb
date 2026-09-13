@@ -1,24 +1,24 @@
 # frozen_string_literal: true
 
 module VPNDetection
-  # The licensed dataset downloads, reached as `client.database`.
+  # The licensed database downloads, reached as `client.database`.
   #
   # Access is granted by contract rather than self-serve, so every method here
   # needs a key carrying the `db.download` scope.
-  class Database
+  class DatabaseApi
     def initialize(transport, retries:)
       @transport = transport
-      @api = DatabaseApi.new(transport)
+      @api = DatabaseWireApi.new(transport)
       @retries = retries
     end
 
-    # The dataset FAMILIES your organization is licensed to download.
+    # The database FAMILIES your organization is licensed to download.
     #
     # A license is held against the family, while a download names one version,
     # so the ids {#download}, {#download_bytes}, {#download_url} and {#checksums}
     # take come from each family's `versions`, not from the family itself.
     def list
-      call { @api.list_databases.datasets }
+      call { @api.list_databases.databases }
     end
 
     # What is inside one dataset: schema, samples, row count and sizes.
