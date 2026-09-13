@@ -178,3 +178,17 @@ class MiddlewareTest < Minitest::Test
     assert_match(/could not resolve a client address/, warnings.first)
   end
 end
+
+# A regression test for a collision the Rails gem created, not a hypothetical:
+# `defined?(Rails)` inside `module VPNDetection` resolves to
+# `VPNDetection::Rails` before the top-level one, so the moment the
+# vpndetection-rails gem defines that namespace, building any client raised
+# NoMethodError on a module that has no `.logger`.
+class RailsConstantCollisionTest < Minitest::Test
+  def test_a_nested_rails_namespace_does_not_break_the_client
+    VPNDetection.const_set(:Rails, Module.new) unless VPNDetection.const_defined?(:Rails, false)
+    VPNDetection::Client.new(cache: false)
+  ensure
+    VPNDetection.send(:remove_const, :Rails) if VPNDetection.const_defined?(:Rails, false)
+  end
+end
