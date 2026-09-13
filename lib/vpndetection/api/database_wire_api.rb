@@ -22,7 +22,7 @@ module VPNDetection
     # Checksums
     # Checksums for one published file, so a download can be verified after it lands. 
     # @param id [String] 
-    # @param format [String] 
+    # @param format [DatabaseFormat] 
     # @param [Hash] opts the optional parameters
     # @return [DatabaseChecksumsResponse]
     def database_checksum(id, format, opts = {})
@@ -33,7 +33,7 @@ module VPNDetection
     # Checksums
     # Checksums for one published file, so a download can be verified after it lands. 
     # @param id [String] 
-    # @param format [String] 
+    # @param format [DatabaseFormat] 
     # @param [Hash] opts the optional parameters
     # @return [Array<(DatabaseChecksumsResponse, Integer, Hash)>] DatabaseChecksumsResponse data, response status code and response headers
     def database_checksum_with_http_info(id, format, opts = {})
@@ -47,11 +47,6 @@ module VPNDetection
       # verify the required parameter 'format' is set
       if @api_client.config.client_side_validation && format.nil?
         fail ArgumentError, "Missing the required parameter 'format' when calling DatabaseWireApi.database_checksum"
-      end
-      # verify enum value
-      allowable_values = ["csvgz", "mmdb"]
-      if @api_client.config.client_side_validation && !allowable_values.include?(format)
-        fail ArgumentError, "invalid value for \"format\", must be one of #{allowable_values}"
       end
       # resource path
       local_var_path = '/api/v1/database/checksum'
@@ -96,7 +91,7 @@ module VPNDetection
     end
 
     # Metadata
-    # Poll this to decide whether today's build is worth fetching: it carries `updated` and `entries` without downloading anything.  No `format` parameter - one document describes every format the dataset is built in. 
+    # Poll this to decide whether today's build is worth fetching: it carries `updated` and `entries` without downloading anything.  No `format` parameter - one document describes every format the database is built in. 
     # @param id [String] 
     # @param [Hash] opts the optional parameters
     # @return [DatabaseMetadata]
@@ -106,7 +101,7 @@ module VPNDetection
     end
 
     # Metadata
-    # Poll this to decide whether today&#39;s build is worth fetching: it carries &#x60;updated&#x60; and &#x60;entries&#x60; without downloading anything.  No &#x60;format&#x60; parameter - one document describes every format the dataset is built in. 
+    # Poll this to decide whether today&#39;s build is worth fetching: it carries &#x60;updated&#x60; and &#x60;entries&#x60; without downloading anything.  No &#x60;format&#x60; parameter - one document describes every format the database is built in. 
     # @param id [String] 
     # @param [Hash] opts the optional parameters
     # @return [Array<(DatabaseMetadata, Integer, Hash)>] DatabaseMetadata data, response status code and response headers
@@ -162,7 +157,7 @@ module VPNDetection
     # Download
     # Answers `302` with a time-limited URL pointing straight at object storage. Follow the redirect; the link authorizes the START of a transfer, so one already running is not interrupted when it lapses. 
     # @param id [String] Dataset id, e.g. vpn_ip_extended_v1
-    # @param format [String] Not every dataset is built in every format. The &#x60;_provider&#x60; catalogues are keyed by provider id rather than by IP range, so no MMDB exists for them. 
+    # @param format [DatabaseFormat] Not every database is built in every format. The &#x60;_provider&#x60; catalogues are keyed by provider id rather than by IP range, so no MMDB exists for them. 
     # @param [Hash] opts the optional parameters
     # @return [nil]
     def download_database(id, format, opts = {})
@@ -173,7 +168,7 @@ module VPNDetection
     # Download
     # Answers &#x60;302&#x60; with a time-limited URL pointing straight at object storage. Follow the redirect; the link authorizes the START of a transfer, so one already running is not interrupted when it lapses. 
     # @param id [String] Dataset id, e.g. vpn_ip_extended_v1
-    # @param format [String] Not every dataset is built in every format. The &#x60;_provider&#x60; catalogues are keyed by provider id rather than by IP range, so no MMDB exists for them. 
+    # @param format [DatabaseFormat] Not every database is built in every format. The &#x60;_provider&#x60; catalogues are keyed by provider id rather than by IP range, so no MMDB exists for them. 
     # @param [Hash] opts the optional parameters
     # @return [Array<(nil, Integer, Hash)>] nil, response status code and response headers
     def download_database_with_http_info(id, format, opts = {})
@@ -187,11 +182,6 @@ module VPNDetection
       # verify the required parameter 'format' is set
       if @api_client.config.client_side_validation && format.nil?
         fail ArgumentError, "Missing the required parameter 'format' when calling DatabaseWireApi.download_database"
-      end
-      # verify enum value
-      allowable_values = ["csvgz", "mmdb"]
-      if @api_client.config.client_side_validation && !allowable_values.include?(format)
-        fail ArgumentError, "invalid value for \"format\", must be one of #{allowable_values}"
       end
       # resource path
       local_var_path = '/api/v1/database/download'
@@ -236,7 +226,7 @@ module VPNDetection
     end
 
     # List
-    # Every dataset this organization holds a licence for, with the term and the license_type right beside each one. 
+    # Every database this organization holds a licence for, with the term and the license_type right beside each one. 
     # @param [Hash] opts the optional parameters
     # @return [DatabaseList]
     def list_databases(opts = {})
@@ -245,7 +235,7 @@ module VPNDetection
     end
 
     # List
-    # Every dataset this organization holds a licence for, with the term and the license_type right beside each one. 
+    # Every database this organization holds a licence for, with the term and the license_type right beside each one. 
     # @param [Hash] opts the optional parameters
     # @return [Array<(DatabaseList, Integer, Hash)>] DatabaseList data, response status code and response headers
     def list_databases_with_http_info(opts = {})

@@ -15,7 +15,7 @@ require 'time'
 
 module VPNDetection
   class DatabaseVersion < ApiModelBase
-    # The versioned dataset id, e.g. `vpn_ip_v1`. Pass this to download.
+    # The versioned database id, e.g. `vpn_ip_v1`. Pass this to download.
     attr_accessor :id
 
     attr_accessor :version
@@ -26,28 +26,6 @@ module VPNDetection
 
     # The formats an evaluation sample is published in, if any.
     attr_accessor :sample_formats
-
-    class EnumAttributeValidator
-      attr_reader :datatype
-      attr_reader :allowable_values
-
-      def initialize(datatype, allowable_values)
-        @allowable_values = allowable_values.map do |value|
-          case datatype.to_s
-          when /Integer/i
-            value.to_i
-          when /Float/i
-            value.to_f
-          else
-            value
-          end
-        end
-      end
-
-      def valid?(value)
-        !value || allowable_values.include?(value)
-      end
-    end
 
     # Attribute mapping from ruby-style variable name to JSON key.
     def self.attribute_map
@@ -77,7 +55,7 @@ module VPNDetection
         :'version' => :'Integer',
         :'summary' => :'String',
         :'formats' => :'Array<DatabaseFormatSize>',
-        :'sample_formats' => :'Array<String>'
+        :'sample_formats' => :'Array<DatabaseFormat>'
       }
     end
 

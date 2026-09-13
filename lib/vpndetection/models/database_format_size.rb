@@ -63,7 +63,7 @@ module VPNDetection
     # Attribute type mapping.
     def self.openapi_types
       {
-        :'format' => :'String',
+        :'format' => :'DatabaseFormat',
         :'bytes' => :'Integer'
       }
     end
@@ -121,18 +121,16 @@ module VPNDetection
     def valid?
       warn '[DEPRECATED] the `valid?` method is obsolete'
       return false if @format.nil?
-      format_validator = EnumAttributeValidator.new('String', ["csvgz", "mmdb"])
-      return false unless format_validator.valid?(@format)
       true
     end
 
-    # Custom attribute writer method checking allowed values (enum).
-    # @param [Object] format Object to be assigned
+    # Custom attribute writer method with validation
+    # @param [Object] format Value to be assigned
     def format=(format)
-      validator = EnumAttributeValidator.new('String', ["csvgz", "mmdb"])
-      unless validator.valid?(format)
-        fail ArgumentError, "invalid value for \"format\", must be one of #{validator.allowable_values}."
+      if format.nil?
+        fail ArgumentError, 'format cannot be nil'
       end
+
       @format = format
     end
 

@@ -14,16 +14,15 @@ require 'date'
 require 'time'
 
 module VPNDetection
-  # One dataset FAMILY your organization is licensed for. A license covers the family, while a download names a specific version, so the ids you pass to the download and checksum endpoints come from `versions`. 
+  # One database FAMILY your organization is licensed for. A license covers the family, while a download names a specific version, so the ids you pass to the download and checksum endpoints come from `versions`. 
   class Database < ApiModelBase
-    # The dataset family, e.g. `vpn_ip`. What the license is held against.
+    # The database family, e.g. `vpn_ip`. What the license is held against.
     attr_accessor :base
 
     attr_accessor :name
 
     attr_accessor :summary
 
-    # What your license permits you to do with the data.
     attr_accessor :license_type
 
     attr_accessor :starts
@@ -40,7 +39,6 @@ module VPNDetection
     # False when the license has lapsed; downloads are refused.
     attr_accessor :in_term
 
-    # `licensed` is a live grant, `expired` one whose term has ended, and `unlicensed` a dataset published but never bought. 
     attr_accessor :standing
 
     # Every published version of this family. The `id` here is what the download and checksum endpoints take. 
@@ -101,13 +99,13 @@ module VPNDetection
         :'base' => :'String',
         :'name' => :'String',
         :'summary' => :'String',
-        :'license_type' => :'String',
+        :'license_type' => :'LicenseType',
         :'starts' => :'Time',
         :'expires' => :'Time',
         :'renews_at' => :'Time',
         :'notice_due_at' => :'Time',
         :'in_term' => :'Boolean',
-        :'standing' => :'String',
+        :'standing' => :'Standing',
         :'versions' => :'Array<DatabaseVersion>'
       }
     end
@@ -251,12 +249,8 @@ module VPNDetection
       return false if @name.nil?
       return false if @summary.nil?
       return false if @license_type.nil?
-      license_type_validator = EnumAttributeValidator.new('String', ["evaluation", "standard", "redistribute"])
-      return false unless license_type_validator.valid?(@license_type)
       return false if @in_term.nil?
       return false if @standing.nil?
-      standing_validator = EnumAttributeValidator.new('String', ["expired", "licensed", "unlicensed"])
-      return false unless standing_validator.valid?(@standing)
       return false if @versions.nil?
       true
     end
@@ -291,13 +285,13 @@ module VPNDetection
       @summary = summary
     end
 
-    # Custom attribute writer method checking allowed values (enum).
-    # @param [Object] license_type Object to be assigned
+    # Custom attribute writer method with validation
+    # @param [Object] license_type Value to be assigned
     def license_type=(license_type)
-      validator = EnumAttributeValidator.new('String', ["evaluation", "standard", "redistribute"])
-      unless validator.valid?(license_type)
-        fail ArgumentError, "invalid value for \"license_type\", must be one of #{validator.allowable_values}."
+      if license_type.nil?
+        fail ArgumentError, 'license_type cannot be nil'
       end
+
       @license_type = license_type
     end
 
@@ -311,13 +305,13 @@ module VPNDetection
       @in_term = in_term
     end
 
-    # Custom attribute writer method checking allowed values (enum).
-    # @param [Object] standing Object to be assigned
+    # Custom attribute writer method with validation
+    # @param [Object] standing Value to be assigned
     def standing=(standing)
-      validator = EnumAttributeValidator.new('String', ["expired", "licensed", "unlicensed"])
-      unless validator.valid?(standing)
-        fail ArgumentError, "invalid value for \"standing\", must be one of #{validator.allowable_values}."
+      if standing.nil?
+        fail ArgumentError, 'standing cannot be nil'
       end
+
       @standing = standing
     end
 
