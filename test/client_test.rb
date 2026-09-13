@@ -189,7 +189,7 @@ class ClientTest < Minitest::Test
     end.new(VPNDetection::Transport::Config.new)
 
     %w[45.83.91.1 2606:4700:4700::1111].each do |ip|
-      VPNDetection::LookupApi.new(capturing).lookup_ip(ip)
+      VPNDetection::LookupWireApi.new(capturing).lookup_ip(ip)
       built = transport.lookup_request(ip).base_url.delete_prefix(VPNDetection::DEFAULT_BASE_URL)
       assert_equal capturing.captured_path, built, "#{ip}: the hand-built path drifted from the generated one"
     end

@@ -134,7 +134,7 @@ Note that `:rate_limited` and `:quota_exceeded` both arrive as HTTP 429 and are 
 
 ### Database downloads
 
-If your key carries the `db.download` scope, the licensed datasets are available through `client.database`. A license covers a dataset FAMILY and a download names one of its versions, so the id comes from `versions`:
+If your key carries the `db.download` scope, the licensed databases are available through `client.database`. A license covers a database FAMILY and a download names one of its versions, so the id comes from `versions`:
 
 ```ruby
 family = client.database.list.first
@@ -145,7 +145,7 @@ url = client.database.download_url(id, 'mmdb')
 bytes = client.database.download_bytes('cdn_ip_v1', 'csvgz')
 ```
 
-`download` streams straight to disk, so nothing bigger than a chunk is ever held in memory whatever the dataset weighs, and it writes through a neighboring `.part` file so a transfer that dies half way leaves no truncated copy behind. `download_url` hands back the time-limited link and follows nothing, for when you want to run the transfer yourself. `download_bytes` holds the whole file in memory, and the catalog runs from `cdn_ip_v1` at 10 KB to `resproxy_ip_90d_v1` at 1.79 GB, so reach for `download` for anything you have not measured.
+`download` streams straight to disk, so nothing bigger than a chunk is ever held in memory whatever the database weighs, and it writes through a neighboring `.part` file so a transfer that dies half way leaves no truncated copy behind. `download_url` hands back the time-limited link and follows nothing, for when you want to run the transfer yourself. `download_bytes` holds the whole file in memory, and the catalog runs from `cdn_ip_v1` at 10 KB to `resproxy_ip_90d_v1` at 1.79 GB, so reach for `download` for anything you have not measured.
 
 ### Absent is not false
 

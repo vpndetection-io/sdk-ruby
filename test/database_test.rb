@@ -40,7 +40,7 @@ class DatabaseTest < Minitest::Test
   # broken in every SDK while the published schema disagreed with the service.
   def test_list_unwraps_the_families_and_their_versions
     stub_database('/api/v1/database/list', 200, {
-                    'datasets' => [{
+                    'databases' => [{
                       'base' => 'vpn_ip_extended', 'name' => 'VPN IP Extended',
                       'summary' => 'extended rows', 'license_type' => 'standard',
                       'starts' => '2026-01-01T00:00:00.000Z', 'expires' => nil,
@@ -49,19 +49,19 @@ class DatabaseTest < Minitest::Test
                       'versions' => [{
                         'id' => 'vpn_ip_extended_v1', 'version' => 1,
                         'formats' => [{ 'format' => 'csvgz', 'bytes' => 1024 }],
-                        'sampleFormats' => ['csvgz'],
+                        'sample_formats' => ['csvgz'],
                       }],
                     }],
                   })
-    datasets = @client.database.list
+    databases = @client.database.list
 
-    assert_equal 1, datasets.length
-    assert_equal 'vpn_ip_extended', datasets.first.base
-    assert_equal 'licensed', datasets.first.standing
-    assert_equal 'vpn_ip_extended_v1', datasets.first.versions.first.id
-    assert_equal 1, datasets.first.versions.first.version
-    assert_equal 'csvgz', datasets.first.versions.first.formats.first.format
-    assert_equal ['csvgz'], datasets.first.versions.first.sample_formats
+    assert_equal 1, databases.length
+    assert_equal 'vpn_ip_extended', databases.first.base
+    assert_equal 'licensed', databases.first.standing
+    assert_equal 'vpn_ip_extended_v1', databases.first.versions.first.id
+    assert_equal 1, databases.first.versions.first.version
+    assert_equal 'csvgz', databases.first.versions.first.formats.first.format
+    assert_equal ['csvgz'], databases.first.versions.first.sample_formats
   end
 
   def test_metadata_returns_the_document_itself
@@ -143,7 +143,7 @@ class DatabaseTest < Minitest::Test
   # same leak sat here unnoticed: the generated client applies EVERY security
   # scheme the spec declares, and the spec declares `?apikey=` for curl users.
   def test_the_key_travels_as_a_bearer_header_and_never_in_the_query
-    server = TestServer.new(delay: 0.0) { |_path| [200, '{"datasets":[]}'] }
+    server = TestServer.new(delay: 0.0) { |_path| [200, '{"databases":[]}'] }
     client = VPNDetection::Client.new(base_url: server.base_url, api_key: 'k', retries: 0)
     Typhoeus::Config.block_connection = false
 
