@@ -48,6 +48,26 @@ result.is_hosting           # => true
 result.hosting['provider']  # => "M247"
 ```
 
+### Your own address
+
+```ruby
+result = client.my_ip
+result.ip   # => the address we saw this call come from
+```
+
+Same answer `lookup` would give for that address, and the same cost against your allowance. It is deliberately not cached: which address you are is the whole question, and a machine that moves between networks would otherwise be told where it used to be.
+
+### Your plan and usage
+
+```ruby
+acct = client.my_account
+acct.plan.key          # => "max"
+acct.usage.requests    # => 580
+acct.usage.window_end  # => when the allowance resets
+```
+
+Usage counts against the anniversary of your subscription, not the calendar month and not the billing period, and it is the same number a lookup is gated on. `hard_limit` is `nil` on an uncapped plan, which is not the same as zero.
+
 ### Batch lookup
 
 You can do batch lookups with a list, which parallelizes requests for you efficiently:
