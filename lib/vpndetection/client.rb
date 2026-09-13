@@ -67,6 +67,47 @@ module VPNDetection
       result
     end
 
+    # Classify the address this client is calling from.
+    #
+    # The same answer {#lookup} would give for that address, at the same cost
+    # against your allowance. The address is the one our edge observed, so a
+    # call made through a proxy or a VPN reports the exit it left through -
+    # usually the point of asking.
+    #
+    # Deliberately NOT cached. The cache is keyed by address, and which address
+    # this is IS the question: a machine that moves between networks would
+    # otherwise be told where it used to be.
+    def my_ip(retries: nil)
+      Retries.with_retries(retries || @retries) do
+        Transport.lookup_result(@transport.myip_request.run)
+      end
+    end
+
+    # What this client's key is entitled to, and how much of it has been used.
+    #
+    # Named for what it answers rather than `me`, which sits one letter from
+    # {#my_ip} and means something quite different: one is which address you are
+    # calling FROM, the other is which account you are calling AS.
+    #
+    # Unlike a lookup there is no useful unauthenticated answer, so a client
+    # built without an API key gets an unauthorized error rather than a partial
+    # one.
+    #
+    # Usage counts against the ALLOWANCE WINDOW - the anniversary of the
+    # subscription, not the calendar month and not the billing period - and it
+    # is the same number a lookup is gated on. It can lag by a few seconds,
+    # because requests are counted in memory and flushed in aggregate.
+    #
+    # Deliberately NOT cached: the whole point is what has been spent, and a
+    # cached answer is a wrong one within seconds of the next request.
+    #
+    # @return [AccountMe]
+    def my_account(retries: nil)
+      Retries.with_retries(retries || @retries) do
+        Transport.account_result(@transport.account_request.run)
+      end
+    end
+
     # Classify many addresses in parallel.
     #
     # Keyed by address rather than positional, so duplicates in the input

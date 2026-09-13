@@ -194,4 +194,69 @@ class ClientTest < Minitest::Test
       assert_equal capturing.captured_path, built, "#{ip}: the hand-built path drifted from the generated one"
     end
   end
+  ACCOUNT_BODY = {
+    'org_id' => '85bb51e4-2eb6-4a31-8e4d-02ba8b98fe61',
+    'apikey' => {
+      'id' => '0ab424cc-7619-4dad-b027-afacdc2cedb0',
+      'expires' => nil,
+      'allowed_cidrs' => [],
+    },
+    'plan' => { 'key' => 'max', 'tier' => 'max' },
+    'usage' => {
+      'requests' => 580,
+      'quota' => 5_000_000,
+      'hard_limit' => nil,
+      'window_start' => '2026-09-04T07:00:00Z',
+      'window_end' => '2026-10-04T07:00:00Z',
+    },
+  }.freeze
+
+  def test_my_ip_classifies_the_calling_address
+    stub_lookups('myip' => { body: { 'ip' => '45.83.91.1', 'is_vpn' => true } })
+    result = VPNDetection::Client.new.my_ip
+
+    assert_equal '45.83.91.1', result.ip
+    assert result.is_vpn
+  end
+
+  def test_my_ip_is_not_cached
+    # The cache is keyed by address, and which address this is IS the question.
+    calls = stub_lookups('myip' => { body: { 'ip' => '45.83.91.1', 'is_vpn' => true } })
+    client = VPNDetection::Client.new
+    client.my_ip
+    client.my_ip
+
+    assert_equal 2, calls.length
+  end
+
+  def test_my_account_reports_the_plan_and_the_usage
+    stub_lookups('api/v1/account/me' => { body: ACCOUNT_BODY })
+    account = VPNDetection::Client.new.my_account
+
+    assert_equal 'max', account.plan.key
+    assert_equal 'max', account.plan.tier
+    assert_equal 580, account.usage.requests
+    assert_equal 5_000_000, account.usage.quota
+    # Null means NEVER stop, which is not the same as a limit of zero.
+    assert_nil account.usage.hard_limit
+    assert_empty account.apikey.allowed_cidrs
+  end
+
+  def test_my_account_is_not_cached
+    # The whole point is what has been spent.
+    calls = stub_lookups('api/v1/account/me' => { body: ACCOUNT_BODY })
+    client = VPNDetection::Client.new
+    client.my_account
+    client.my_account
+
+    assert_equal 2, calls.length
+  end
+
+  def test_my_account_surfaces_an_unauthorized_key
+    stub_lookups('api/v1/account/me' => { status: 401, body: { 'error' => 'invalid API key' } })
+    client = VPNDetection::Client.new(retries: 0)
+
+    assert_raises(VPNDetection::Error) { client.my_account }
+  end
+
 end
