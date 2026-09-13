@@ -32,6 +32,7 @@ module VPNDetection
     # publishes is the API's choice, not ours, and the response nests them one
     # level down under `checksums`.
     def checksums(id, format)
+      check_format!(format)
       call { @api.database_checksum(id, format).checksums }
     end
 
@@ -47,6 +48,7 @@ module VPNDetection
     # START of a transfer, so one already running is not interrupted when it
     # lapses.
     def download_url(id, format)
+      check_format!(format)
       call { redirect_location(id, format) }
     end
 
@@ -90,6 +92,19 @@ module VPNDetection
     end
 
     private
+
+    # A format the API does not publish is refused HERE rather than sent.
+    #
+    # The generator used to emit this check inline in the wire client; naming
+    # the enum in the spec made it stop, so an unknown format became a network
+    # round trip and a 400. Owning it in this layer keeps the behaviour where a
+    # caller can see it and independent of what the generator emits.
+    def check_format!(format)
+      return if DatabaseFormat.all_vars.include?(format)
+
+      raise ArgumentError,
+            "invalid value for \"format\", must be one of #{DatabaseFormat.all_vars}"
+    end
 
     # Runs one transfer of a presigned link, handing each chunk to the block, and
     # returns the bytes that reached it.

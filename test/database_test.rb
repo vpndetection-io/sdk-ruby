@@ -173,4 +173,12 @@ class DatabaseTest < Minitest::Test
     assert_equal :unauthorized, error.kind
     assert_equal 'UNAUTHORIZED', error.message
   end
+  # Naming the format enum in the spec made openapi-generator stop emitting its
+  # inline parameter check, so an unknown format silently became a network call
+  # and a 400. The guard lives in the hand-written layer now; this is what stops
+  # it going missing again.
+  def test_an_unpublished_format_is_refused_before_any_request
+    assert_raises(ArgumentError) { @client.database.checksums('vpn_ip_extended_v1', 'parquet') }
+    assert_raises(ArgumentError) { @client.database.download_url('vpn_ip_extended_v1', 'parquet') }
+  end
 end
