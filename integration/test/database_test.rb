@@ -38,35 +38,46 @@ class DatabaseTest < Minitest::Test
   def test_the_licensed_catalogue_answers_the_schema_the_client_was_generated_from
     families = max_client.database.list
 
-    refute_empty families, 'the max organization licenses nothing'
+    refute_empty families, 'the catalogue arrived empty'
     # Named first, and against what the wire actually carried, because every
     # typed assertion below reads as nil when the payload disagrees and a bare
     # "expected a String" costs a whole CI cycle to interpret.
-    served = Staging.wire_json('/api/v1/database/list', Tiers.max)['datasets'].flat_map(&:keys).uniq
+    served = Staging.wire_json('/api/v1/database/list', Tiers.max)['databases'].flat_map(&:keys).uniq
     assert_includes served, 'base', "the payload carries #{served.sort.join(', ')}"
     assert_includes served, 'versions', "the payload carries #{served.sort.join(', ')}"
     refute_includes served, 'docsGroup',
                     'docsGroup is a docs-site slug and must not be published as API surface'
 
-    ids = families.flat_map do |family|
-      refute_nil family.base, 'a licensed family carries no base'
+    licensed = []
+    families.each do |family|
+      refute_nil family.base, 'a family carries no base'
       refute_nil family.name, "#{family.base} carries no name"
       assert_includes %w[expired licensed unlicensed], family.standing,
                       "#{family.base} carries an undocumented standing"
-      assert_includes %w[evaluation standard redistribute], family.license_type,
-                      "#{family.base} carries an undocumented right"
+      # `list` answers the WHOLE catalogue, so an unlicensed family is a normal
+      # row with no licence type at all. Asserting one either way is what tells a
+      # nil apart from a value this client cannot read.
+      if family.standing == 'unlicensed'
+        assert_nil family.license_type, "#{family.base} is unlicensed and carries a right"
+      else
+        assert_includes %w[evaluation standard redistribute], family.license_type,
+                        "#{family.base} carries an undocumented right"
+        licensed << family.base
+      end
       # The point of the family shape: a license covers the family, and these are
       # the ids the download and checksum calls take. Before the spec was
       # corrected this list did not exist, so list() could not tell a caller what
       # to download.
       refute_empty family.versions, "#{family.base} carries no versions"
-      family.versions.map do |version|
+      family.versions.each do |version|
         refute_nil version.id, "#{family.base} has a version with no id"
         refute_empty version.formats, "#{version.id} carries no formats"
-        version.id
       end
     end
-    puts "==> licensed: #{ids.join(', ')}"
+    # The max org holds grants in staging, so an empty list here is the catalogue
+    # arriving without any of them rather than a plan that buys nothing.
+    refute_empty licensed, 'the max organization licenses nothing'
+    puts "==> catalogue: #{families.size}, licensed: #{licensed.join(', ')}"
   end
 
   def test_a_dataset_the_organization_does_not_license_is_refused_cleanly
