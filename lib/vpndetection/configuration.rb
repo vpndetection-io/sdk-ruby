@@ -177,10 +177,6 @@ module VPNDetection
       @ignore_operation_servers = false
       @inject_format = false
       @force_ending_format = false
-      # `::Rails`, not `Rails`: this file is inside `module VPNDetection`, so a
-      # bare constant resolves to `VPNDetection::Rails` first if one exists -
-      # and one does, as soon as the vpndetection-rails gem is loaded. The
-      # intent has always been the top-level Rails.
       @logger = defined?(::Rails) ? ::Rails.logger : Logger.new(STDOUT)
 
       yield(self) if block_given?

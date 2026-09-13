@@ -62,7 +62,19 @@ docker run --rm \
 # lib/vpndetection/version.rb, which are OURS, plus a gemspec, Gemfile, Rakefile,
 # README, rubocop config, travis and gitlab CI files and an rspec suite - all of
 # which would overwrite the repo if the output were unpacked over it.
+# The generator writes `defined?(Rails) ? Rails.logger : ...` into
+# configuration.rb, and that file lives inside `module VPNDetection` - so the
+# bare constant resolves to VPNDetection::Rails first, which EXISTS as soon as
+# the vpndetection-rails gem is loaded. Re-applied here rather than by hand,
+# because a hand-fix to a generated file survives exactly until the next
+# regeneration; it was lost that way once already.
+function patch_rails_constant() {
+    sed -i 's|defined?(Rails) ? Rails.logger|defined?(::Rails) ? ::Rails.logger|' \
+        .gen/lib/vpndetection/configuration.rb
+}
+
 rm -rf lib/vpndetection/{api,models} lib/vpndetection/{api_client,api_error,api_model_base,configuration}.rb
+patch_rails_constant
 cp -R .gen/lib/vpndetection/api lib/vpndetection/api
 cp -R .gen/lib/vpndetection/models lib/vpndetection/models
 for f in api_client api_error api_model_base configuration ; do

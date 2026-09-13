@@ -23,6 +23,7 @@ module VPNDetection
 
     attr_accessor :summary
 
+    # What a license permits you to do with the data. Null for a family you hold no license for, which is every one with standing `unlicensed`. 
     attr_accessor :license_type
 
     attr_accessor :starts
@@ -99,7 +100,7 @@ module VPNDetection
         :'base' => :'String',
         :'name' => :'String',
         :'summary' => :'String',
-        :'license_type' => :'LicenseType',
+        :'license_type' => :'String',
         :'starts' => :'Time',
         :'expires' => :'Time',
         :'renews_at' => :'Time',
@@ -113,6 +114,7 @@ module VPNDetection
     # List of attributes with nullable: true
     def self.openapi_nullable
       Set.new([
+        :'license_type',
         :'starts',
         :'expires',
         :'renews_at',
@@ -222,10 +224,6 @@ module VPNDetection
         invalid_properties.push('invalid value for "summary", summary cannot be nil.')
       end
 
-      if @license_type.nil?
-        invalid_properties.push('invalid value for "license_type", license_type cannot be nil.')
-      end
-
       if @in_term.nil?
         invalid_properties.push('invalid value for "in_term", in_term cannot be nil.')
       end
@@ -248,7 +246,8 @@ module VPNDetection
       return false if @base.nil?
       return false if @name.nil?
       return false if @summary.nil?
-      return false if @license_type.nil?
+      license_type_validator = EnumAttributeValidator.new('String', ["evaluation", "standard", "redistribute"])
+      return false unless license_type_validator.valid?(@license_type)
       return false if @in_term.nil?
       return false if @standing.nil?
       return false if @versions.nil?
@@ -285,13 +284,13 @@ module VPNDetection
       @summary = summary
     end
 
-    # Custom attribute writer method with validation
-    # @param [Object] license_type Value to be assigned
+    # Custom attribute writer method checking allowed values (enum).
+    # @param [Object] license_type Object to be assigned
     def license_type=(license_type)
-      if license_type.nil?
-        fail ArgumentError, 'license_type cannot be nil'
+      validator = EnumAttributeValidator.new('String', ["evaluation", "standard", "redistribute"])
+      unless validator.valid?(license_type)
+        fail ArgumentError, "invalid value for \"license_type\", must be one of #{validator.allowable_values}."
       end
-
       @license_type = license_type
     end
 

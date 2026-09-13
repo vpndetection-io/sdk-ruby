@@ -226,7 +226,7 @@ module VPNDetection
     end
 
     # List
-    # Every database this organization holds a licence for, with the term and the license_type right beside each one. 
+    # Every database this organization may SEE, with where its licence stands. Not just the ones you hold: a customer with one grant should be able to tell what else is published without asking. `standing` is the difference - `licensed`, `expired`, or `unlicensed` for one never bought. 
     # @param [Hash] opts the optional parameters
     # @return [DatabaseList]
     def list_databases(opts = {})
@@ -235,7 +235,7 @@ module VPNDetection
     end
 
     # List
-    # Every database this organization holds a licence for, with the term and the license_type right beside each one. 
+    # Every database this organization may SEE, with where its licence stands. Not just the ones you hold: a customer with one grant should be able to tell what else is published without asking. &#x60;standing&#x60; is the difference - &#x60;licensed&#x60;, &#x60;expired&#x60;, or &#x60;unlicensed&#x60; for one never bought. 
     # @param [Hash] opts the optional parameters
     # @return [Array<(DatabaseList, Integer, Hash)>] DatabaseList data, response status code and response headers
     def list_databases_with_http_info(opts = {})
