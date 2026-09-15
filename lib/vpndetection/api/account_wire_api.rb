@@ -19,7 +19,7 @@ module VPNDetection
     def initialize(api_client = ApiClient.default)
       @api_client = api_client
     end
-    # Identity - who this credential belongs to
+    # Identity
     # The identity behind this credential: what it is, the organization it is scoped to, and the scopes it currently holds.  `user` is present for an OAuth token and ABSENT for an API key, which has an organization but no person behind it. `credential.kind` says which you are holding, so a client can branch without guessing from a missing field.  Narrower than what the console shows its own user on purpose: an integration needs a name to display and an organization to address, not a profile. The `scopes` array is what the credential may do RIGHT NOW, so a client can render its own capabilities rather than discovering them from a 403. 
     # @param [Hash] opts the optional parameters
     # @return [Identity]
@@ -28,7 +28,7 @@ module VPNDetection
       data
     end
 
-    # Identity - who this credential belongs to
+    # Identity
     # The identity behind this credential: what it is, the organization it is scoped to, and the scopes it currently holds.  &#x60;user&#x60; is present for an OAuth token and ABSENT for an API key, which has an organization but no person behind it. &#x60;credential.kind&#x60; says which you are holding, so a client can branch without guessing from a missing field.  Narrower than what the console shows its own user on purpose: an integration needs a name to display and an organization to address, not a profile. The &#x60;scopes&#x60; array is what the credential may do RIGHT NOW, so a client can render its own capabilities rather than discovering them from a 403. 
     # @param [Hash] opts the optional parameters
     # @return [Array<(Identity, Integer, Hash)>] Identity data, response status code and response headers
@@ -37,7 +37,7 @@ module VPNDetection
         @api_client.config.logger.debug 'Calling API: AccountWireApi.account_identity ...'
       end
       # resource path
-      local_var_path = '/api/v1/account/identity'
+      local_var_path = '/api/v1/iam/identity'
 
       # query parameters
       query_params = opts[:query_params] || {}

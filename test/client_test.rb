@@ -230,7 +230,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_my_entitlement_reports_the_plan_and_the_usage
-    stub_lookups('api/v1/entitlement/me' => { body: ENTITLEMENT_BODY })
+    stub_lookups('api/v1/entitlement' => { body: ENTITLEMENT_BODY })
     ent = VPNDetection::Client.new.my_entitlement
 
     assert_equal 'max', ent.plan.key
@@ -244,7 +244,7 @@ class ClientTest < Minitest::Test
 
   def test_my_entitlement_is_not_cached
     # The whole point is what has been spent.
-    calls = stub_lookups('api/v1/entitlement/me' => { body: ENTITLEMENT_BODY })
+    calls = stub_lookups('api/v1/entitlement' => { body: ENTITLEMENT_BODY })
     client = VPNDetection::Client.new
     client.my_entitlement
     client.my_entitlement
@@ -253,7 +253,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_my_entitlement_surfaces_an_unauthorized_key
-    stub_lookups('api/v1/entitlement/me' => { status: 401, body: { 'error' => 'invalid API key' } })
+    stub_lookups('api/v1/entitlement' => { status: 401, body: { 'error' => 'invalid API key' } })
     client = VPNDetection::Client.new(retries: 0)
 
     assert_raises(VPNDetection::Error) { client.my_entitlement }

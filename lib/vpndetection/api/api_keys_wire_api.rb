@@ -19,7 +19,7 @@ module VPNDetection
     def initialize(api_client = ApiClient.default)
       @api_client = api_client
     end
-    # Create an API key
+    # Create
     # Creates a key and returns its secret.  This is the ONLY response that ever carries the secret, and only because this is the moment it comes into existence. Store it now. 
     # @param account_create_apikey_request [AccountCreateApikeyRequest] 
     # @param [Hash] opts the optional parameters
@@ -29,7 +29,7 @@ module VPNDetection
       data
     end
 
-    # Create an API key
+    # Create
     # Creates a key and returns its secret.  This is the ONLY response that ever carries the secret, and only because this is the moment it comes into existence. Store it now. 
     # @param account_create_apikey_request [AccountCreateApikeyRequest] 
     # @param [Hash] opts the optional parameters
@@ -43,7 +43,7 @@ module VPNDetection
         fail ArgumentError, "Missing the required parameter 'account_create_apikey_request' when calling APIKeysWireApi.account_create_apikey"
       end
       # resource path
-      local_var_path = '/api/v1/account/apikeys'
+      local_var_path = '/api/v1/iam/apikeys'
 
       # query parameters
       query_params = opts[:query_params] || {}
@@ -87,7 +87,7 @@ module VPNDetection
       return data, status_code, headers
     end
 
-    # List your API keys
+    # List
     # Metadata only. A key's secret is never in a list - not here and not in the console - because a list is the response that ends up in logs, caches and support tickets.  `retrievable` says whether the secret could still be read back at all. A key issued before this product stored secrets recoverably was never kept, so `reveal` will refuse it permanently; rotating produces one that can be read. 
     # @param [Hash] opts the optional parameters
     # @return [ApikeyList]
@@ -96,7 +96,7 @@ module VPNDetection
       data
     end
 
-    # List your API keys
+    # List
     # Metadata only. A key&#39;s secret is never in a list - not here and not in the console - because a list is the response that ends up in logs, caches and support tickets.  &#x60;retrievable&#x60; says whether the secret could still be read back at all. A key issued before this product stored secrets recoverably was never kept, so &#x60;reveal&#x60; will refuse it permanently; rotating produces one that can be read. 
     # @param [Hash] opts the optional parameters
     # @return [Array<(ApikeyList, Integer, Hash)>] ApikeyList data, response status code and response headers
@@ -105,7 +105,7 @@ module VPNDetection
         @api_client.config.logger.debug 'Calling API: APIKeysWireApi.account_list_apikeys ...'
       end
       # resource path
-      local_var_path = '/api/v1/account/apikeys'
+      local_var_path = '/api/v1/iam/apikeys'
 
       # query parameters
       query_params = opts[:query_params] || {}
@@ -144,7 +144,7 @@ module VPNDetection
       return data, status_code, headers
     end
 
-    # Read back a key's secret
+    # Reveal
     # Returns an existing key's secret.  Its own scope rather than part of `apikeys.manage`, because the two are different acts: rotating replaces a secret you never see, while this hands one over.  Refused with `NOT_RETRIEVABLE` for a key issued before this product stored secrets recoverably - that secret was never kept, so no retry will ever produce it. Rotate the key instead. 
     # @param id [String] The key&#39;s id, as returned by the list endpoint. Never the key itself.
     # @param [Hash] opts the optional parameters
@@ -154,7 +154,7 @@ module VPNDetection
       data
     end
 
-    # Read back a key&#39;s secret
+    # Reveal
     # Returns an existing key&#39;s secret.  Its own scope rather than part of &#x60;apikeys.manage&#x60;, because the two are different acts: rotating replaces a secret you never see, while this hands one over.  Refused with &#x60;NOT_RETRIEVABLE&#x60; for a key issued before this product stored secrets recoverably - that secret was never kept, so no retry will ever produce it. Rotate the key instead. 
     # @param id [String] The key&#39;s id, as returned by the list endpoint. Never the key itself.
     # @param [Hash] opts the optional parameters
@@ -168,7 +168,7 @@ module VPNDetection
         fail ArgumentError, "Missing the required parameter 'id' when calling APIKeysWireApi.account_reveal_apikey"
       end
       # resource path
-      local_var_path = '/api/v1/account/apikeys/{id}/reveal'.sub('{id}', CGI.escape(id.to_s))
+      local_var_path = '/api/v1/iam/apikeys/{id}/reveal'.sub('{id}', CGI.escape(id.to_s))
 
       # query parameters
       query_params = opts[:query_params] || {}
@@ -207,7 +207,7 @@ module VPNDetection
       return data, status_code, headers
     end
 
-    # Revoke an API key
+    # Revoke
     # Stops the key working. Revocation is soft: the key stays listed with a `revoked_at`, because the organization still owns whatever it did while it was alive. 
     # @param id [String] The key&#39;s id, as returned by the list endpoint. Never the key itself.
     # @param [Hash] opts the optional parameters
@@ -217,7 +217,7 @@ module VPNDetection
       data
     end
 
-    # Revoke an API key
+    # Revoke
     # Stops the key working. Revocation is soft: the key stays listed with a &#x60;revoked_at&#x60;, because the organization still owns whatever it did while it was alive. 
     # @param id [String] The key&#39;s id, as returned by the list endpoint. Never the key itself.
     # @param [Hash] opts the optional parameters
@@ -231,7 +231,7 @@ module VPNDetection
         fail ArgumentError, "Missing the required parameter 'id' when calling APIKeysWireApi.account_revoke_apikey"
       end
       # resource path
-      local_var_path = '/api/v1/account/apikeys/{id}/revoke'.sub('{id}', CGI.escape(id.to_s))
+      local_var_path = '/api/v1/iam/apikeys/{id}/revoke'.sub('{id}', CGI.escape(id.to_s))
 
       # query parameters
       query_params = opts[:query_params] || {}
@@ -270,7 +270,7 @@ module VPNDetection
       return data, status_code, headers
     end
 
-    # Rotate an API key
+    # Rotate
     # Replaces the secret behind a key, keeping its id, name and settings. The previous secret stops working immediately. 
     # @param id [String] The key&#39;s id, as returned by the list endpoint. Never the key itself.
     # @param [Hash] opts the optional parameters
@@ -280,7 +280,7 @@ module VPNDetection
       data
     end
 
-    # Rotate an API key
+    # Rotate
     # Replaces the secret behind a key, keeping its id, name and settings. The previous secret stops working immediately. 
     # @param id [String] The key&#39;s id, as returned by the list endpoint. Never the key itself.
     # @param [Hash] opts the optional parameters
@@ -294,7 +294,7 @@ module VPNDetection
         fail ArgumentError, "Missing the required parameter 'id' when calling APIKeysWireApi.account_rotate_apikey"
       end
       # resource path
-      local_var_path = '/api/v1/account/apikeys/{id}/rotate'.sub('{id}', CGI.escape(id.to_s))
+      local_var_path = '/api/v1/iam/apikeys/{id}/rotate'.sub('{id}', CGI.escape(id.to_s))
 
       # query parameters
       query_params = opts[:query_params] || {}

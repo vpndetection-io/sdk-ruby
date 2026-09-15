@@ -19,7 +19,7 @@ module VPNDetection
     def initialize(api_client = ApiClient.default)
       @api_client = api_client
     end
-    # Your organization
+    # Organization
     # The organization this credential is scoped to.  There is no way to name a different one. A credential describes exactly one organization, so an identifier in the path could only ever be your own or a refusal. 
     # @param [Hash] opts the optional parameters
     # @return [AccountOrgWrap]
@@ -28,7 +28,7 @@ module VPNDetection
       data
     end
 
-    # Your organization
+    # Organization
     # The organization this credential is scoped to.  There is no way to name a different one. A credential describes exactly one organization, so an identifier in the path could only ever be your own or a refusal. 
     # @param [Hash] opts the optional parameters
     # @return [Array<(AccountOrgWrap, Integer, Hash)>] AccountOrgWrap data, response status code and response headers
@@ -37,7 +37,7 @@ module VPNDetection
         @api_client.config.logger.debug 'Calling API: OrganizationWireApi.account_org ...'
       end
       # resource path
-      local_var_path = '/api/v1/account/org'
+      local_var_path = '/api/v1/iam/org'
 
       # query parameters
       query_params = opts[:query_params] || {}
@@ -76,7 +76,7 @@ module VPNDetection
       return data, status_code, headers
     end
 
-    # Who else is in your organization
+    # Members
     # Read-only. Adding or removing a member is an invitation flow with email in the middle rather than a POST, and modelling it as one here would promise something this API does not do. 
     # @param [Hash] opts the optional parameters
     # @return [AccountRc]
@@ -85,7 +85,7 @@ module VPNDetection
       data
     end
 
-    # Who else is in your organization
+    # Members
     # Read-only. Adding or removing a member is an invitation flow with email in the middle rather than a POST, and modelling it as one here would promise something this API does not do. 
     # @param [Hash] opts the optional parameters
     # @return [Array<(AccountRc, Integer, Hash)>] AccountRc data, response status code and response headers
@@ -94,7 +94,7 @@ module VPNDetection
         @api_client.config.logger.debug 'Calling API: OrganizationWireApi.account_org_members ...'
       end
       # resource path
-      local_var_path = '/api/v1/account/org/members'
+      local_var_path = '/api/v1/iam/org/members'
 
       # query parameters
       query_params = opts[:query_params] || {}

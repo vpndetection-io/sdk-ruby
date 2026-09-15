@@ -19,7 +19,7 @@ module VPNDetection
     def initialize(api_client = ApiClient.default)
       @api_client = api_client
     end
-    # Send a user here to approve
+    # Authorize
     # The browser entry point for the authorization-code flow. This is a redirect target, not something to call from code.  An unknown `client_id` or an unregistered `redirect_uri` is shown to the USER and never redirected, because sending an error to an address we have not verified belongs to you is how an open redirector works. Everything else comes back to your `redirect_uri` with `error`, your `state`, and `iss`. 
     # @param client_id [String] 
     # @param redirect_uri [String] 
@@ -36,7 +36,7 @@ module VPNDetection
       nil
     end
 
-    # Send a user here to approve
+    # Authorize
     # The browser entry point for the authorization-code flow. This is a redirect target, not something to call from code.  An unknown &#x60;client_id&#x60; or an unregistered &#x60;redirect_uri&#x60; is shown to the USER and never redirected, because sending an error to an address we have not verified belongs to you is how an open redirector works. Everything else comes back to your &#x60;redirect_uri&#x60; with &#x60;error&#x60;, your &#x60;state&#x60;, and &#x60;iss&#x60;. 
     # @param client_id [String] 
     # @param redirect_uri [String] 
@@ -123,7 +123,7 @@ module VPNDetection
       return data, status_code, headers
     end
 
-    # Begin a device authorization
+    # Device authorization
     # Starts the device flow. Show the `user_code` to the person and send them to `verification_uri`; `verification_uri_complete` has the code already embedded, which is what to open if you can open a browser at all.  Then poll `/oauth/token`, no faster than `interval` seconds. 
     # @param client_id [String] 
     # @param [Hash] opts the optional parameters
@@ -135,7 +135,7 @@ module VPNDetection
       data
     end
 
-    # Begin a device authorization
+    # Device authorization
     # Starts the device flow. Show the &#x60;user_code&#x60; to the person and send them to &#x60;verification_uri&#x60;; &#x60;verification_uri_complete&#x60; has the code already embedded, which is what to open if you can open a browser at all.  Then poll &#x60;/oauth/token&#x60;, no faster than &#x60;interval&#x60; seconds. 
     # @param client_id [String] 
     # @param [Hash] opts the optional parameters
@@ -198,7 +198,7 @@ module VPNDetection
       return data, status_code, headers
     end
 
-    # Discovery document
+    # Discovery
     # RFC 8414 authorization server metadata: the endpoints, the grant types and the scopes this server supports.  Read this rather than hardcoding endpoints. It is also served at `/.well-known/openid-configuration`, identically, because several clients probe that path first. 
     # @param [Hash] opts the optional parameters
     # @return [OauthMetadata]
@@ -207,7 +207,7 @@ module VPNDetection
       data
     end
 
-    # Discovery document
+    # Discovery
     # RFC 8414 authorization server metadata: the endpoints, the grant types and the scopes this server supports.  Read this rather than hardcoding endpoints. It is also served at &#x60;/.well-known/openid-configuration&#x60;, identically, because several clients probe that path first. 
     # @param [Hash] opts the optional parameters
     # @return [Array<(OauthMetadata, Integer, Hash)>] OauthMetadata data, response status code and response headers
@@ -255,7 +255,7 @@ module VPNDetection
       return data, status_code, headers
     end
 
-    # Revoke a token
+    # Revoke
     # RFC 7009. Always answers 200, including for a token that was never valid - an endpoint that distinguished the two would be a way to test whether a stolen string is a live credential.  Revoking a REFRESH token ends the whole authorization and takes its access tokens with it. Revoking an access token affects only that token. 
     # @param token [String] 
     # @param [Hash] opts the optional parameters
@@ -266,7 +266,7 @@ module VPNDetection
       data
     end
 
-    # Revoke a token
+    # Revoke
     # RFC 7009. Always answers 200, including for a token that was never valid - an endpoint that distinguished the two would be a way to test whether a stolen string is a live credential.  Revoking a REFRESH token ends the whole authorization and takes its access tokens with it. Revoking an access token affects only that token. 
     # @param token [String] 
     # @param [Hash] opts the optional parameters
@@ -327,7 +327,7 @@ module VPNDetection
       return data, status_code, headers
     end
 
-    # Exchange a grant for tokens
+    # Token
     # Three grant types.  `urn:ietf:params:oauth:grant-type:device_code` polls a device authorization. Until the person approves it answers `authorization_pending`; poll faster than `interval` and it answers `slow_down`, which means widen your interval and keep it widened.  `authorization_code` exchanges a code from `/oauth/authorize`, with the `code_verifier` matching the challenge you sent.  `refresh_token` exchanges a refresh token. The presented token is consumed whatever happens next, so store the new one before using it. 
     # @param grant_type [String] 
     # @param client_id [String] 
@@ -343,7 +343,7 @@ module VPNDetection
       data
     end
 
-    # Exchange a grant for tokens
+    # Token
     # Three grant types.  &#x60;urn:ietf:params:oauth:grant-type:device_code&#x60; polls a device authorization. Until the person approves it answers &#x60;authorization_pending&#x60;; poll faster than &#x60;interval&#x60; and it answers &#x60;slow_down&#x60;, which means widen your interval and keep it widened.  &#x60;authorization_code&#x60; exchanges a code from &#x60;/oauth/authorize&#x60;, with the &#x60;code_verifier&#x60; matching the challenge you sent.  &#x60;refresh_token&#x60; exchanges a refresh token. The presented token is consumed whatever happens next, so store the new one before using it. 
     # @param grant_type [String] 
     # @param client_id [String] 

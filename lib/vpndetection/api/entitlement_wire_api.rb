@@ -19,7 +19,7 @@ module VPNDetection
     def initialize(api_client = ApiClient.default)
       @api_client = api_client
     end
-    # Your key, plan and usage
+    # Plan and usage
     # Answers what the presented key is, what plan is behind it, and what has been spent against that plan's allowance in the current window. 
     # @param [Hash] opts the optional parameters
     # @return [Entitlement]
@@ -28,7 +28,7 @@ module VPNDetection
       data
     end
 
-    # Your key, plan and usage
+    # Plan and usage
     # Answers what the presented key is, what plan is behind it, and what has been spent against that plan&#39;s allowance in the current window. 
     # @param [Hash] opts the optional parameters
     # @return [Array<(Entitlement, Integer, Hash)>] Entitlement data, response status code and response headers
@@ -37,7 +37,7 @@ module VPNDetection
         @api_client.config.logger.debug 'Calling API: EntitlementWireApi.my_entitlement ...'
       end
       # resource path
-      local_var_path = '/api/v1/entitlement/me'
+      local_var_path = '/api/v1/entitlement'
 
       # query parameters
       query_params = opts[:query_params] || {}

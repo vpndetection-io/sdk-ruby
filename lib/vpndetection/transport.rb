@@ -14,7 +14,7 @@ module VPNDetection
     # method, which runs each request as it builds it.
     LOOKUP_PATH = '/{ip}'
     MYIP_PATH = '/myip'
-    ENTITLEMENT_PATH = '/api/v1/entitlement/me'
+    ENTITLEMENT_PATH = '/api/v1/entitlement'
 
     # The generated Configuration applies EVERY security scheme the spec lists,
     # so a keyless client would send `Authorization: Bearer `, an empty

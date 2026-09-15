@@ -82,7 +82,7 @@ module VPNDetection
       return data, status_code, headers
     end
 
-    # Lookup your own address
+    # My IP
     # Answers what is known about the address this request came from, which is the same answer `GET /{ip}` gives for that address: the plan behind the presented key decides which fields come back, and the request counts against the same allowance.  The address is the one our edge observed, so a request through a proxy or a VPN reports the exit it left through rather than the machine that made it. That is usually the point of asking. 
     # @param [Hash] opts the optional parameters
     # @return [LookupResponse]
@@ -91,7 +91,7 @@ module VPNDetection
       data
     end
 
-    # Lookup your own address
+    # My IP
     # Answers what is known about the address this request came from, which is the same answer &#x60;GET /{ip}&#x60; gives for that address: the plan behind the presented key decides which fields come back, and the request counts against the same allowance.  The address is the one our edge observed, so a request through a proxy or a VPN reports the exit it left through rather than the machine that made it. That is usually the point of asking. 
     # @param [Hash] opts the optional parameters
     # @return [Array<(LookupResponse, Integer, Hash)>] LookupResponse data, response status code and response headers
