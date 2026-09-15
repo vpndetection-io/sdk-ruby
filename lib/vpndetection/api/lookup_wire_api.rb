@@ -19,6 +19,74 @@ module VPNDetection
     def initialize(api_client = ApiClient.default)
       @api_client = api_client
     end
+    # Batch
+    # Answers up to 1000 addresses in one call. Each distinct string in `ips` is one lookup: it costs exactly what `GET /{ip}` costs for that address and comes back with exactly the fields that call would carry for your plan. Exact duplicates collapse to one entry and one lookup.  Both maps in the answer are keyed by the string you sent, so nothing has to be lined up by position; the `ip` inside each result is the normalized form. An address that could not be answered sits in `errors` with the status and message the single lookup would have given, and never disturbs the others: a string that is not an address is a `400` there, and an allowance that runs out part way through leaves the remaining entries as `429`s.  The call itself fails only for the reasons below, and a `429` on the call always carries `Retry-After`: the batch is admitted or refused whole by the rate limit, so a per-entry `429` is always a spent allowance and never a throttle. 
+    # @param batch_lookup_request [BatchLookupRequest] 
+    # @param [Hash] opts the optional parameters
+    # @return [BatchLookupResponse]
+    def lookup_batch(batch_lookup_request, opts = {})
+      data, _status_code, _headers = lookup_batch_with_http_info(batch_lookup_request, opts)
+      data
+    end
+
+    # Batch
+    # Answers up to 1000 addresses in one call. Each distinct string in &#x60;ips&#x60; is one lookup: it costs exactly what &#x60;GET /{ip}&#x60; costs for that address and comes back with exactly the fields that call would carry for your plan. Exact duplicates collapse to one entry and one lookup.  Both maps in the answer are keyed by the string you sent, so nothing has to be lined up by position; the &#x60;ip&#x60; inside each result is the normalized form. An address that could not be answered sits in &#x60;errors&#x60; with the status and message the single lookup would have given, and never disturbs the others: a string that is not an address is a &#x60;400&#x60; there, and an allowance that runs out part way through leaves the remaining entries as &#x60;429&#x60;s.  The call itself fails only for the reasons below, and a &#x60;429&#x60; on the call always carries &#x60;Retry-After&#x60;: the batch is admitted or refused whole by the rate limit, so a per-entry &#x60;429&#x60; is always a spent allowance and never a throttle. 
+    # @param batch_lookup_request [BatchLookupRequest] 
+    # @param [Hash] opts the optional parameters
+    # @return [Array<(BatchLookupResponse, Integer, Hash)>] BatchLookupResponse data, response status code and response headers
+    def lookup_batch_with_http_info(batch_lookup_request, opts = {})
+      if @api_client.config.debugging
+        @api_client.config.logger.debug 'Calling API: LookupWireApi.lookup_batch ...'
+      end
+      # verify the required parameter 'batch_lookup_request' is set
+      if @api_client.config.client_side_validation && batch_lookup_request.nil?
+        fail ArgumentError, "Missing the required parameter 'batch_lookup_request' when calling LookupWireApi.lookup_batch"
+      end
+      # resource path
+      local_var_path = '/batch'
+
+      # query parameters
+      query_params = opts[:query_params] || {}
+
+      # header parameters
+      header_params = opts[:header_params] || {}
+      # HTTP header 'Accept' (if needed)
+      header_params['Accept'] = @api_client.select_header_accept(['application/json']) unless header_params['Accept']
+      # HTTP header 'Content-Type'
+      content_type = @api_client.select_header_content_type(['application/json'])
+      if !content_type.nil?
+          header_params['Content-Type'] = content_type
+      end
+
+      # form parameters
+      form_params = opts[:form_params] || {}
+
+      # http body (model)
+      post_body = opts[:debug_body] || @api_client.object_to_http_body(batch_lookup_request)
+
+      # return_type
+      return_type = opts[:debug_return_type] || 'BatchLookupResponse'
+
+      # auth_names
+      auth_names = opts[:debug_auth_names] || ['apiKeyQuery', 'bearerAuth', 'apiKeyHeader']
+
+      new_options = opts.merge(
+        :operation => :"LookupWireApi.lookup_batch",
+        :header_params => header_params,
+        :query_params => query_params,
+        :form_params => form_params,
+        :body => post_body,
+        :auth_names => auth_names,
+        :return_type => return_type
+      )
+
+      data, status_code, headers = @api_client.call_api(:POST, local_var_path, new_options)
+      if @api_client.config.debugging
+        @api_client.config.logger.debug "API called: LookupWireApi#lookup_batch\nData: #{data.inspect}\nStatus code: #{status_code}\nHeaders: #{headers}"
+      end
+      return data, status_code, headers
+    end
+
     # Lookup
     # Answers what is known about a single IPv4 or IPv6 address. Which fields come back is decided by the plan behind the presented key; with no key the answer is `ip` and `is_vpn`. 
     # @param ip [String] The IPv4 or IPv6 address to classify.

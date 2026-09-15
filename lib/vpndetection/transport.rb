@@ -15,6 +15,7 @@ module VPNDetection
     LOOKUP_PATH = '/{ip}'
     MYIP_PATH = '/myip'
     ENTITLEMENT_PATH = '/api/v1/entitlement'
+    BATCH_PATH = '/batch'
 
     # The generated Configuration applies EVERY security scheme the spec lists,
     # so a keyless client would send `Authorization: Bearer `, an empty
@@ -107,6 +108,16 @@ module VPNDetection
       )
     end
 
+    # The one request with a body: the batch.
+    def batch_request(ips)
+      build_request(
+        :POST, BATCH_PATH,
+        header_params: { 'Accept' => 'application/json', 'Content-Type' => 'application/json' },
+        body: { ips: ips },
+        auth_names: %w[bearerAuth apiKeyHeader apiKeyQuery],
+      )
+    end
+
     def self.entitlement_result(response)
       raise Error.from_transport(response) if transport_failure?(response)
       raise Error.from_status(response.code, response.headers, response.body) unless response.success?
@@ -119,6 +130,18 @@ module VPNDetection
       raise Error.from_status(response.code, response.headers, response.body) unless response.success?
 
       Result.new(parse_object(response))
+    end
+
+    # The two maps of a batch answer, each present even when empty.
+    def self.batch_body(response)
+      raise Error.from_transport(response) if transport_failure?(response)
+      raise Error.from_status(response.code, response.headers, response.body) unless response.success?
+
+      body = parse_object(response)
+      {
+        'results' => body['results'].is_a?(Hash) ? body['results'] : {},
+        'errors' => body['errors'].is_a?(Hash) ? body['errors'] : {},
+      }
     end
 
     def self.transport_failure?(response)

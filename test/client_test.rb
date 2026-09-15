@@ -119,7 +119,10 @@ class ClientTest < Minitest::Test
   def test_a_batch_reaches_the_concurrency_it_was_given
     server = TestServer.new(delay: 0.05)
     client = VPNDetection::Client.new(base_url: server.base_url, concurrency: 2, cache: false)
-    addresses = (1..12).map { |n| "203.0.114.#{n}" }
+    # Enough addresses for nine chunks of the batch endpoint's 1000, so a
+    # concurrency of eight has something to bound: one request per chunk, and
+    # only the chunks overlap.
+    addresses = (0...8001).map { |n| "9.#{1 + (n / 65536)}.#{(n / 256) % 256}.#{n % 256}" }
 
     client.lookup_batch(addresses)
     assert_equal 2, server.peak, 'the client setting bounds a batch that does not override it'
@@ -135,12 +138,12 @@ class ClientTest < Minitest::Test
 
   def test_a_batch_honors_a_per_call_retries_override
     attempts = Hash.new(0)
-    server = TestServer.new(delay: 0.0) do |path|
+    server = TestServer.new(delay: 0.0) do |path, body|
       attempts[path] += 1
       if attempts[path] < 3
         [500, '{"error":"lookup failed"}']
       else
-        [200, JSON.generate({ 'ip' => path[1..], 'is_vpn' => true })]
+        [200, TestServer.batch_body(body, is_vpn: true)]
       end
     end
     client = VPNDetection::Client.new(base_url: server.base_url, retries: 0, cache: false)
@@ -193,6 +196,10 @@ class ClientTest < Minitest::Test
       built = transport.lookup_request(ip).base_url.delete_prefix(VPNDetection::DEFAULT_BASE_URL)
       assert_equal capturing.captured_path, built, "#{ip}: the hand-built path drifted from the generated one"
     end
+
+    VPNDetection::LookupWireApi.new(capturing).lookup_batch(VPNDetection::BatchLookupRequest.new(ips: ['1.1.1.1']))
+    built = transport.batch_request(['1.1.1.1']).base_url.delete_prefix(VPNDetection::DEFAULT_BASE_URL)
+    assert_equal capturing.captured_path, built, 'the hand-built batch path drifted from the generated one'
   end
   ENTITLEMENT_BODY = {
     'org_id' => '85bb51e4-2eb6-4a31-8e4d-02ba8b98fe61',

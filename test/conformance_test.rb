@@ -126,6 +126,7 @@ class ConformanceTest < Minitest::Test
     assert_equal c['expect']['keys'], got.keys
     c['expect']['errorKeys'].each do |ip|
       assert_kind_of VPNDetection::Error, got[ip], "#{ip} should carry its error"
+      assert_equal c['expect']['errorKinds'][ip].to_sym, got[ip].kind, ip
     end
     assert_equal false, got['1.1.1.1'].is_vpn, 'the good address still answered'
   end
@@ -137,6 +138,38 @@ class ConformanceTest < Minitest::Test
 
     c['repeat'].times { client.lookup_batch(c['input']) }
 
+    assert_equal c['expect']['httpRequests'], calls.length
+  end
+
+  def test_a_large_batch_is_sent_in_chunks_of_a_thousand
+    c = corpus_batch('chunks-of-one-thousand')
+    calls = stub_lookups(c['input'].to_h { |ip| [ip, { body: { 'ip' => ip, 'is_vpn' => false } }] })
+    got = VPNDetection::Client.new(cache: false).lookup_batch(c['input'])
+
+    assert_equal c['expect']['keyCount'], got.size
+    assert_equal c['expect']['httpRequests'], calls.length
+    c['input'].each do |ip|
+      assert_equal ip, got[ip].ip, "#{ip} should be answered for itself"
+    end
+  end
+
+  # A per-entry failure carries no headers, so its 429 can only be a spent
+  # allowance, and a 500 is the server's; neither is retried per entry, because
+  # retries belong to the call and the call succeeded.
+  def test_an_entry_error_is_classified_by_its_status
+    c = corpus_batch('an-entry-error-is-classified-by-its-status')
+    calls = stub_lookups(
+      '1.1.1.1' => { body: { 'ip' => '1.1.1.1', 'is_vpn' => false } },
+      '8.8.8.8' => { status: 429, body: { 'error' => 'request allowance exceeded; raise or remove your overage limit' } },
+      '9.9.9.9' => { status: 500, body: { 'error' => 'lookup failed' } },
+    )
+    got = VPNDetection::Client.new(retries: 3).lookup_batch(c['input'])
+
+    assert_equal c['expect']['keys'], got.keys
+    c['expect']['errorKinds'].each do |ip, kind|
+      assert_kind_of VPNDetection::Error, got[ip], "#{ip} should carry its error"
+      assert_equal kind.to_sym, got[ip].kind, ip
+    end
     assert_equal c['expect']['httpRequests'], calls.length
   end
 

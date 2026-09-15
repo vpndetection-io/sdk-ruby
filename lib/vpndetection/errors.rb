@@ -67,6 +67,13 @@ module VPNDetection
       new(:network, message)
     end
 
+    # A per-entry failure inside a successful batch: the status the single lookup
+    # would have answered, and its message, with no headers at all - so a 429
+    # here is a spent allowance, which is the only kind the API puts in an entry.
+    def self.from_entry(status, message)
+      from_status(status.to_i, {}, nil, message: message.to_s)
+    end
+
     # Case-insensitive, and works with a plain Hash as well as with the
     # case-blind header object Typhoeus builds from a live response.
     def self.header(headers, name)

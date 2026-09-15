@@ -9,6 +9,9 @@ module VPNDetection
   DEFAULT_CONCURRENCY = 8
   DEFAULT_RETRIES = 2
   DEFAULT_TIMEOUT = 10
+  # The most addresses POST /batch takes in one call; a larger batch is sent in
+  # chunks of this size.
+  BATCH_MAX = 1000
 
   # A client for the VPNDetection API.
   #
@@ -23,7 +26,7 @@ module VPNDetection
     #   address.
     # @param cache [Boolean] pass false to disable caching.
     # @param cache_ttl [Numeric] how long an answer stays fresh, in seconds.
-    # @param concurrency [Integer] in-flight requests during a batch.
+    # @param concurrency [Integer] batch requests - chunks of up to 1000 addresses - in flight during a batch.
     # @param retries [Integer] extra attempts for a transient failure.
     # @param transport [Transport, nil] override the HTTP layer, mostly for tests.
     def initialize(api_key: nil, base_url: DEFAULT_BASE_URL, cache: true,
@@ -108,13 +111,19 @@ module VPNDetection
       end
     end
 
-    # Classify many addresses in parallel.
+    # Classify many addresses in as few requests as possible.
     #
-    # Keyed by address rather than positional, so duplicates in the input
-    # collapse to a single request and the caller never has to line two lists
-    # up. An address that fails carries its error as its value, so one bad entry
-    # cannot lose the rest of the answers.
+    # Bogons are answered locally and cached answers are reused; everything else
+    # goes to the batch endpoint in chunks of up to 1000 addresses, with at most
+    # `concurrency` chunks in flight. Keyed by address rather than positional, so
+    # duplicates in the input collapse to a single entry and the caller never has
+    # to line two lists up. An address that fails carries its error as its value,
+    # so one bad entry cannot lose the rest of the answers: the API reports a
+    # per-entry failure with the status the single lookup would have answered,
+    # and a chunk that fails as a whole marks every address in it.
     #
+    # @param concurrency [Integer, nil] chunks in flight, for THIS batch only.
+    # @param retries [Integer, nil] extra attempts for a failed chunk, for THIS batch only.
     # @return [Hash{String => Result, Error}] in the order the addresses were given
     def lookup_batch(ips, concurrency: nil, retries: nil)
       addresses = ips.to_a.uniq
@@ -126,7 +135,8 @@ module VPNDetection
         hit.nil? ? pending << ip : answers[ip] = hit
       end
       unless pending.empty?
-        run_batch(pending, answers, concurrency || @concurrency, retries || @retries)
+        run_batch(pending.each_slice(BATCH_MAX).to_a, answers,
+                  concurrency || @concurrency, retries || @retries)
       end
 
       # Reinstated in input order: a hydra settles in completion order, and a
@@ -138,37 +148,58 @@ module VPNDetection
 
     # One hydra per call, sized for THIS call. Reusing an instance-level hydra
     # would silently cap a per-call concurrency at the client's setting, and
-    # would not be safe to drive from two threads either.
-    def run_batch(pending, answers, concurrency, retries)
+    # would not be safe to drive from two threads either. Each request is one
+    # chunk of up to 1000 addresses.
+    def run_batch(chunks, answers, concurrency, retries)
       hydra = Typhoeus::Hydra.new(max_concurrency: concurrency)
       attempts = Hash.new(0)
 
-      enqueue = lambda do |ip|
-        request = @transport.lookup_request(ip)
+      enqueue = lambda do |chunk|
+        request = @transport.batch_request(chunk)
         request.on_complete do |response|
-          outcome = settle(ip, response, attempts, retries, enqueue)
-          answers[ip] = outcome unless outcome.nil?
+          outcome = settle(chunk, response, attempts, retries, enqueue)
+          answers.merge!(outcome) unless outcome.nil?
         end
         hydra.queue(request)
       end
 
-      pending.each { |ip| enqueue.call(ip) }
+      chunks.each { |chunk| enqueue.call(chunk) }
       hydra.run
     end
 
-    def settle(ip, response, attempts, retries, enqueue)
-      result = Transport.lookup_result(response)
-      @cache&.set(ip, result)
-      result
+    # One POST /batch, mapped back onto the addresses it was asked about. A
+    # chunk-level failure - the call refused, the transport failing, the retries
+    # exhausted - becomes every address's error, exactly as it would have been
+    # had each been looked up alone.
+    def settle(chunk, response, attempts, retries, enqueue)
+      body = Transport.batch_body(response)
+      chunk.to_h do |ip|
+        answer = batch_answer(ip, body)
+        @cache&.set(ip, answer) if answer.is_a?(Result)
+        [ip, answer]
+      end
     rescue Error => e
-      return e unless e.retryable? && attempts[ip] < retries
+      return chunk.to_h { |ip| [ip, e] } unless e.retryable? && attempts[chunk] < retries
 
-      attempts[ip] += 1
+      attempts[chunk] += 1
       # Sleeping here stalls the whole hydra, which is what a server-supplied
       # delay asks for: it is telling every request to this host to back off.
-      sleep(Retries.delay_for(e, attempts[ip]))
-      enqueue.call(ip)
+      sleep(Retries.delay_for(e, attempts[chunk]))
+      enqueue.call(chunk)
       nil
+    end
+
+    # Every address lands in exactly one of `results` and `errors`; an address in
+    # neither is the server breaking its own contract, and is reported as such
+    # rather than lost.
+    def batch_answer(ip, body)
+      if (served = body['results'][ip])
+        Result.new(served)
+      elsif (failed = body['errors'][ip])
+        Error.from_entry(failed['status'], failed['error'])
+      else
+        Error.new(:server_error, "the batch answer did not include #{ip}", status: 200)
+      end
     end
   end
 end
