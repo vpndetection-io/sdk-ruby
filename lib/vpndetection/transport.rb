@@ -14,7 +14,7 @@ module VPNDetection
     # method, which runs each request as it builds it.
     LOOKUP_PATH = '/{ip}'
     MYIP_PATH = '/myip'
-    ACCOUNT_ME_PATH = '/api/v1/account/me'
+    ENTITLEMENT_PATH = '/api/v1/entitlement/me'
 
     # The generated Configuration applies EVERY security scheme the spec lists,
     # so a keyless client would send `Authorization: Bearer `, an empty
@@ -99,19 +99,19 @@ module VPNDetection
       )
     end
 
-    def account_request
+    def entitlement_request
       build_request(
-        :GET, ACCOUNT_ME_PATH,
+        :GET, ENTITLEMENT_PATH,
         header_params: { 'Accept' => 'application/json' },
         auth_names: %w[bearerAuth apiKeyHeader apiKeyQuery],
       )
     end
 
-    def self.account_result(response)
+    def self.entitlement_result(response)
       raise Error.from_transport(response) if transport_failure?(response)
       raise Error.from_status(response.code, response.headers, response.body) unless response.success?
 
-      AccountMe.build_from_hash(parse_object(response))
+      Entitlement.build_from_hash(parse_object(response))
     end
 
     def self.lookup_result(response)

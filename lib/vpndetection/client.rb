@@ -87,7 +87,7 @@ module VPNDetection
     #
     # Named for what it answers rather than `me`, which sits one letter from
     # {#my_ip} and means something quite different: one is which address you are
-    # calling FROM, the other is which account you are calling AS.
+    # calling FROM, the other is what the key you are calling WITH may spend.
     #
     # Unlike a lookup there is no useful unauthenticated answer, so a client
     # built without an API key gets an unauthorized error rather than a partial
@@ -101,10 +101,10 @@ module VPNDetection
     # Deliberately NOT cached: the whole point is what has been spent, and a
     # cached answer is a wrong one within seconds of the next request.
     #
-    # @return [AccountMe]
-    def my_account(retries: nil)
+    # @return [Entitlement]
+    def my_entitlement(retries: nil)
       Retries.with_retries(retries || @retries) do
-        Transport.account_result(@transport.account_request.run)
+        Transport.entitlement_result(@transport.entitlement_request.run)
       end
     end
 

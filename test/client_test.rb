@@ -194,7 +194,7 @@ class ClientTest < Minitest::Test
       assert_equal capturing.captured_path, built, "#{ip}: the hand-built path drifted from the generated one"
     end
   end
-  ACCOUNT_BODY = {
+  ENTITLEMENT_BODY = {
     'org_id' => '85bb51e4-2eb6-4a31-8e4d-02ba8b98fe61',
     'apikey' => {
       'id' => '0ab424cc-7619-4dad-b027-afacdc2cedb0',
@@ -229,34 +229,34 @@ class ClientTest < Minitest::Test
     assert_equal 2, calls.length
   end
 
-  def test_my_account_reports_the_plan_and_the_usage
-    stub_lookups('api/v1/account/me' => { body: ACCOUNT_BODY })
-    account = VPNDetection::Client.new.my_account
+  def test_my_entitlement_reports_the_plan_and_the_usage
+    stub_lookups('api/v1/entitlement/me' => { body: ENTITLEMENT_BODY })
+    ent = VPNDetection::Client.new.my_entitlement
 
-    assert_equal 'max', account.plan.key
-    assert_equal 'max', account.plan.tier
-    assert_equal 580, account.usage.requests
-    assert_equal 5_000_000, account.usage.quota
+    assert_equal 'max', ent.plan.key
+    assert_equal 'max', ent.plan.tier
+    assert_equal 580, ent.usage.requests
+    assert_equal 5_000_000, ent.usage.quota
     # Null means NEVER stop, which is not the same as a limit of zero.
-    assert_nil account.usage.hard_limit
-    assert_empty account.apikey.allowed_cidrs
+    assert_nil ent.usage.hard_limit
+    assert_empty ent.apikey.allowed_cidrs
   end
 
-  def test_my_account_is_not_cached
+  def test_my_entitlement_is_not_cached
     # The whole point is what has been spent.
-    calls = stub_lookups('api/v1/account/me' => { body: ACCOUNT_BODY })
+    calls = stub_lookups('api/v1/entitlement/me' => { body: ENTITLEMENT_BODY })
     client = VPNDetection::Client.new
-    client.my_account
-    client.my_account
+    client.my_entitlement
+    client.my_entitlement
 
     assert_equal 2, calls.length
   end
 
-  def test_my_account_surfaces_an_unauthorized_key
-    stub_lookups('api/v1/account/me' => { status: 401, body: { 'error' => 'invalid API key' } })
+  def test_my_entitlement_surfaces_an_unauthorized_key
+    stub_lookups('api/v1/entitlement/me' => { status: 401, body: { 'error' => 'invalid API key' } })
     client = VPNDetection::Client.new(retries: 0)
 
-    assert_raises(VPNDetection::Error) { client.my_account }
+    assert_raises(VPNDetection::Error) { client.my_entitlement }
   end
 
 end

@@ -14,19 +14,44 @@ require 'date'
 require 'time'
 
 module VPNDetection
-  class DatabaseMetadataColumn < ApiModelBase
+  # Key METADATA. Never the key itself.
+  class ApikeyDetail < ApiModelBase
+    attr_accessor :id
+
     attr_accessor :name
 
-    attr_accessor :type
+    # The leading, non-secret part, so a key is recognisable without storing it.
+    attr_accessor :key_prefix
 
-    attr_accessor :description
+    attr_accessor :created
+
+    attr_accessor :expires
+
+    attr_accessor :last_used_at
+
+    attr_accessor :revoked_at
+
+    # Source-IP allowlist. EMPTY MEANS UNRESTRICTED, not deny-all.
+    attr_accessor :allowed_cidrs
+
+    attr_accessor :allowed_scopes
+
+    # Whether this key's secret can still be read back. False permanently for a key issued before secrets were stored recoverably.
+    attr_accessor :retrievable
 
     # Attribute mapping from ruby-style variable name to JSON key.
     def self.attribute_map
       {
+        :'id' => :'id',
         :'name' => :'name',
-        :'type' => :'type',
-        :'description' => :'description'
+        :'key_prefix' => :'key_prefix',
+        :'created' => :'created',
+        :'expires' => :'expires',
+        :'last_used_at' => :'last_used_at',
+        :'revoked_at' => :'revoked_at',
+        :'allowed_cidrs' => :'allowed_cidrs',
+        :'allowed_scopes' => :'allowed_scopes',
+        :'retrievable' => :'retrievable'
       }
     end
 
@@ -43,15 +68,25 @@ module VPNDetection
     # Attribute type mapping.
     def self.openapi_types
       {
+        :'id' => :'String',
         :'name' => :'String',
-        :'type' => :'String',
-        :'description' => :'String'
+        :'key_prefix' => :'String',
+        :'created' => :'Time',
+        :'expires' => :'Time',
+        :'last_used_at' => :'Time',
+        :'revoked_at' => :'Time',
+        :'allowed_cidrs' => :'Array<String>',
+        :'allowed_scopes' => :'Array<String>',
+        :'retrievable' => :'Boolean'
       }
     end
 
     # List of attributes with nullable: true
     def self.openapi_nullable
       Set.new([
+        :'expires',
+        :'last_used_at',
+        :'revoked_at',
       ])
     end
 
@@ -59,17 +94,23 @@ module VPNDetection
     # @param [Hash] attributes Model attributes in the form of hash
     def initialize(attributes = {})
       if (!attributes.is_a?(Hash))
-        fail ArgumentError, "The input argument (attributes) must be a hash in `VPNDetection::DatabaseMetadataColumn` initialize method"
+        fail ArgumentError, "The input argument (attributes) must be a hash in `VPNDetection::ApikeyDetail` initialize method"
       end
 
       # check to see if the attribute exists and convert string to symbol for hash key
       acceptable_attribute_map = self.class.acceptable_attribute_map
       attributes = attributes.each_with_object({}) { |(k, v), h|
         if (!acceptable_attribute_map.key?(k.to_sym))
-          fail ArgumentError, "`#{k}` is not a valid attribute in `VPNDetection::DatabaseMetadataColumn`. Please check the name to make sure it's valid. List of attributes: " + acceptable_attribute_map.keys.inspect
+          fail ArgumentError, "`#{k}` is not a valid attribute in `VPNDetection::ApikeyDetail`. Please check the name to make sure it's valid. List of attributes: " + acceptable_attribute_map.keys.inspect
         end
         h[k.to_sym] = v
       }
+
+      if attributes.key?(:'id')
+        self.id = attributes[:'id']
+      else
+        self.id = nil
+      end
 
       if attributes.key?(:'name')
         self.name = attributes[:'name']
@@ -77,14 +118,44 @@ module VPNDetection
         self.name = nil
       end
 
-      if attributes.key?(:'type')
-        self.type = attributes[:'type']
+      if attributes.key?(:'key_prefix')
+        self.key_prefix = attributes[:'key_prefix']
       else
-        self.type = nil
+        self.key_prefix = nil
       end
 
-      if attributes.key?(:'description')
-        self.description = attributes[:'description']
+      if attributes.key?(:'created')
+        self.created = attributes[:'created']
+      else
+        self.created = nil
+      end
+
+      if attributes.key?(:'expires')
+        self.expires = attributes[:'expires']
+      end
+
+      if attributes.key?(:'last_used_at')
+        self.last_used_at = attributes[:'last_used_at']
+      end
+
+      if attributes.key?(:'revoked_at')
+        self.revoked_at = attributes[:'revoked_at']
+      end
+
+      if attributes.key?(:'allowed_cidrs')
+        if (value = attributes[:'allowed_cidrs']).is_a?(Array)
+          self.allowed_cidrs = value
+        end
+      end
+
+      if attributes.key?(:'allowed_scopes')
+        if (value = attributes[:'allowed_scopes']).is_a?(Array)
+          self.allowed_scopes = value
+        end
+      end
+
+      if attributes.key?(:'retrievable')
+        self.retrievable = attributes[:'retrievable']
       end
     end
 
@@ -93,12 +164,20 @@ module VPNDetection
     def list_invalid_properties
       warn '[DEPRECATED] the `list_invalid_properties` method is obsolete'
       invalid_properties = Array.new
+      if @id.nil?
+        invalid_properties.push('invalid value for "id", id cannot be nil.')
+      end
+
       if @name.nil?
         invalid_properties.push('invalid value for "name", name cannot be nil.')
       end
 
-      if @type.nil?
-        invalid_properties.push('invalid value for "type", type cannot be nil.')
+      if @key_prefix.nil?
+        invalid_properties.push('invalid value for "key_prefix", key_prefix cannot be nil.')
+      end
+
+      if @created.nil?
+        invalid_properties.push('invalid value for "created", created cannot be nil.')
       end
 
       invalid_properties
@@ -108,9 +187,21 @@ module VPNDetection
     # @return true if the model is valid
     def valid?
       warn '[DEPRECATED] the `valid?` method is obsolete'
+      return false if @id.nil?
       return false if @name.nil?
-      return false if @type.nil?
+      return false if @key_prefix.nil?
+      return false if @created.nil?
       true
+    end
+
+    # Custom attribute writer method with validation
+    # @param [Object] id Value to be assigned
+    def id=(id)
+      if id.nil?
+        fail ArgumentError, 'id cannot be nil'
+      end
+
+      @id = id
     end
 
     # Custom attribute writer method with validation
@@ -124,13 +215,23 @@ module VPNDetection
     end
 
     # Custom attribute writer method with validation
-    # @param [Object] type Value to be assigned
-    def type=(type)
-      if type.nil?
-        fail ArgumentError, 'type cannot be nil'
+    # @param [Object] key_prefix Value to be assigned
+    def key_prefix=(key_prefix)
+      if key_prefix.nil?
+        fail ArgumentError, 'key_prefix cannot be nil'
       end
 
-      @type = type
+      @key_prefix = key_prefix
+    end
+
+    # Custom attribute writer method with validation
+    # @param [Object] created Value to be assigned
+    def created=(created)
+      if created.nil?
+        fail ArgumentError, 'created cannot be nil'
+      end
+
+      @created = created
     end
 
     # Checks equality by comparing each attribute.
@@ -138,9 +239,16 @@ module VPNDetection
     def ==(o)
       return true if self.equal?(o)
       self.class == o.class &&
+          id == o.id &&
           name == o.name &&
-          type == o.type &&
-          description == o.description
+          key_prefix == o.key_prefix &&
+          created == o.created &&
+          expires == o.expires &&
+          last_used_at == o.last_used_at &&
+          revoked_at == o.revoked_at &&
+          allowed_cidrs == o.allowed_cidrs &&
+          allowed_scopes == o.allowed_scopes &&
+          retrievable == o.retrievable
     end
 
     # @see the `==` method
@@ -152,7 +260,7 @@ module VPNDetection
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [name, type, description].hash
+      [id, name, key_prefix, created, expires, last_used_at, revoked_at, allowed_cidrs, allowed_scopes, retrievable].hash
     end
 
     # Builds the object from hash

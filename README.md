@@ -60,7 +60,7 @@ Same answer `lookup` would give for that address, and the same cost against your
 ### Your plan and usage
 
 ```ruby
-acct = client.my_account
+acct = client.my_entitlement
 acct.plan.key          # => "max"
 acct.usage.requests    # => 580
 acct.usage.window_end  # => when the allowance resets

@@ -14,19 +14,18 @@ require 'date'
 require 'time'
 
 module VPNDetection
-  class DatabaseMetadataColumn < ApiModelBase
+  class AccountCreateApikeyRequest < ApiModelBase
+    # A label you will recognise later. Shown wherever the key is listed.
     attr_accessor :name
 
-    attr_accessor :type
-
-    attr_accessor :description
+    # What the new key may do. Omit for a key that carries no named scope, which is the safe default.
+    attr_accessor :allowed_scopes
 
     # Attribute mapping from ruby-style variable name to JSON key.
     def self.attribute_map
       {
         :'name' => :'name',
-        :'type' => :'type',
-        :'description' => :'description'
+        :'allowed_scopes' => :'allowed_scopes'
       }
     end
 
@@ -44,8 +43,7 @@ module VPNDetection
     def self.openapi_types
       {
         :'name' => :'String',
-        :'type' => :'String',
-        :'description' => :'String'
+        :'allowed_scopes' => :'Array<String>'
       }
     end
 
@@ -59,14 +57,14 @@ module VPNDetection
     # @param [Hash] attributes Model attributes in the form of hash
     def initialize(attributes = {})
       if (!attributes.is_a?(Hash))
-        fail ArgumentError, "The input argument (attributes) must be a hash in `VPNDetection::DatabaseMetadataColumn` initialize method"
+        fail ArgumentError, "The input argument (attributes) must be a hash in `VPNDetection::AccountCreateApikeyRequest` initialize method"
       end
 
       # check to see if the attribute exists and convert string to symbol for hash key
       acceptable_attribute_map = self.class.acceptable_attribute_map
       attributes = attributes.each_with_object({}) { |(k, v), h|
         if (!acceptable_attribute_map.key?(k.to_sym))
-          fail ArgumentError, "`#{k}` is not a valid attribute in `VPNDetection::DatabaseMetadataColumn`. Please check the name to make sure it's valid. List of attributes: " + acceptable_attribute_map.keys.inspect
+          fail ArgumentError, "`#{k}` is not a valid attribute in `VPNDetection::AccountCreateApikeyRequest`. Please check the name to make sure it's valid. List of attributes: " + acceptable_attribute_map.keys.inspect
         end
         h[k.to_sym] = v
       }
@@ -77,14 +75,10 @@ module VPNDetection
         self.name = nil
       end
 
-      if attributes.key?(:'type')
-        self.type = attributes[:'type']
-      else
-        self.type = nil
-      end
-
-      if attributes.key?(:'description')
-        self.description = attributes[:'description']
+      if attributes.key?(:'allowed_scopes')
+        if (value = attributes[:'allowed_scopes']).is_a?(Array)
+          self.allowed_scopes = value
+        end
       end
     end
 
@@ -97,10 +91,6 @@ module VPNDetection
         invalid_properties.push('invalid value for "name", name cannot be nil.')
       end
 
-      if @type.nil?
-        invalid_properties.push('invalid value for "type", type cannot be nil.')
-      end
-
       invalid_properties
     end
 
@@ -109,7 +99,6 @@ module VPNDetection
     def valid?
       warn '[DEPRECATED] the `valid?` method is obsolete'
       return false if @name.nil?
-      return false if @type.nil?
       true
     end
 
@@ -123,24 +112,13 @@ module VPNDetection
       @name = name
     end
 
-    # Custom attribute writer method with validation
-    # @param [Object] type Value to be assigned
-    def type=(type)
-      if type.nil?
-        fail ArgumentError, 'type cannot be nil'
-      end
-
-      @type = type
-    end
-
     # Checks equality by comparing each attribute.
     # @param [Object] Object to be compared
     def ==(o)
       return true if self.equal?(o)
       self.class == o.class &&
           name == o.name &&
-          type == o.type &&
-          description == o.description
+          allowed_scopes == o.allowed_scopes
     end
 
     # @see the `==` method
@@ -152,7 +130,7 @@ module VPNDetection
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [name, type, description].hash
+      [name, allowed_scopes].hash
     end
 
     # Builds the object from hash

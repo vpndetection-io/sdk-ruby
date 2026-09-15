@@ -14,23 +14,32 @@ require 'date'
 require 'time'
 
 module VPNDetection
-  # The published digests for one database file.
-  class DbChecksums < ApiModelBase
-    attr_accessor :md5
+  class DeviceAuthorization < ApiModelBase
+    # Yours. Poll with it; never show it to anyone.
+    attr_accessor :device_code
 
-    attr_accessor :sha1
+    # Short and typable. This is what the person confirms.
+    attr_accessor :user_code
 
-    attr_accessor :sha256
+    attr_accessor :verification_uri
 
-    attr_accessor :sha512
+    # The same page with the code already filled in.
+    attr_accessor :verification_uri_complete
+
+    attr_accessor :expires_in
+
+    # Seconds between polls.
+    attr_accessor :interval
 
     # Attribute mapping from ruby-style variable name to JSON key.
     def self.attribute_map
       {
-        :'md5' => :'md5',
-        :'sha1' => :'sha1',
-        :'sha256' => :'sha256',
-        :'sha512' => :'sha512'
+        :'device_code' => :'device_code',
+        :'user_code' => :'user_code',
+        :'verification_uri' => :'verification_uri',
+        :'verification_uri_complete' => :'verification_uri_complete',
+        :'expires_in' => :'expires_in',
+        :'interval' => :'interval'
       }
     end
 
@@ -47,10 +56,12 @@ module VPNDetection
     # Attribute type mapping.
     def self.openapi_types
       {
-        :'md5' => :'String',
-        :'sha1' => :'String',
-        :'sha256' => :'String',
-        :'sha512' => :'String'
+        :'device_code' => :'String',
+        :'user_code' => :'String',
+        :'verification_uri' => :'String',
+        :'verification_uri_complete' => :'String',
+        :'expires_in' => :'Integer',
+        :'interval' => :'Integer'
       }
     end
 
@@ -64,40 +75,50 @@ module VPNDetection
     # @param [Hash] attributes Model attributes in the form of hash
     def initialize(attributes = {})
       if (!attributes.is_a?(Hash))
-        fail ArgumentError, "The input argument (attributes) must be a hash in `VPNDetection::DbChecksums` initialize method"
+        fail ArgumentError, "The input argument (attributes) must be a hash in `VPNDetection::DeviceAuthorization` initialize method"
       end
 
       # check to see if the attribute exists and convert string to symbol for hash key
       acceptable_attribute_map = self.class.acceptable_attribute_map
       attributes = attributes.each_with_object({}) { |(k, v), h|
         if (!acceptable_attribute_map.key?(k.to_sym))
-          fail ArgumentError, "`#{k}` is not a valid attribute in `VPNDetection::DbChecksums`. Please check the name to make sure it's valid. List of attributes: " + acceptable_attribute_map.keys.inspect
+          fail ArgumentError, "`#{k}` is not a valid attribute in `VPNDetection::DeviceAuthorization`. Please check the name to make sure it's valid. List of attributes: " + acceptable_attribute_map.keys.inspect
         end
         h[k.to_sym] = v
       }
 
-      if attributes.key?(:'md5')
-        self.md5 = attributes[:'md5']
+      if attributes.key?(:'device_code')
+        self.device_code = attributes[:'device_code']
       else
-        self.md5 = nil
+        self.device_code = nil
       end
 
-      if attributes.key?(:'sha1')
-        self.sha1 = attributes[:'sha1']
+      if attributes.key?(:'user_code')
+        self.user_code = attributes[:'user_code']
       else
-        self.sha1 = nil
+        self.user_code = nil
       end
 
-      if attributes.key?(:'sha256')
-        self.sha256 = attributes[:'sha256']
+      if attributes.key?(:'verification_uri')
+        self.verification_uri = attributes[:'verification_uri']
       else
-        self.sha256 = nil
+        self.verification_uri = nil
       end
 
-      if attributes.key?(:'sha512')
-        self.sha512 = attributes[:'sha512']
+      if attributes.key?(:'verification_uri_complete')
+        self.verification_uri_complete = attributes[:'verification_uri_complete']
+      end
+
+      if attributes.key?(:'expires_in')
+        self.expires_in = attributes[:'expires_in']
       else
-        self.sha512 = nil
+        self.expires_in = nil
+      end
+
+      if attributes.key?(:'interval')
+        self.interval = attributes[:'interval']
+      else
+        self.interval = nil
       end
     end
 
@@ -106,20 +127,24 @@ module VPNDetection
     def list_invalid_properties
       warn '[DEPRECATED] the `list_invalid_properties` method is obsolete'
       invalid_properties = Array.new
-      if @md5.nil?
-        invalid_properties.push('invalid value for "md5", md5 cannot be nil.')
+      if @device_code.nil?
+        invalid_properties.push('invalid value for "device_code", device_code cannot be nil.')
       end
 
-      if @sha1.nil?
-        invalid_properties.push('invalid value for "sha1", sha1 cannot be nil.')
+      if @user_code.nil?
+        invalid_properties.push('invalid value for "user_code", user_code cannot be nil.')
       end
 
-      if @sha256.nil?
-        invalid_properties.push('invalid value for "sha256", sha256 cannot be nil.')
+      if @verification_uri.nil?
+        invalid_properties.push('invalid value for "verification_uri", verification_uri cannot be nil.')
       end
 
-      if @sha512.nil?
-        invalid_properties.push('invalid value for "sha512", sha512 cannot be nil.')
+      if @expires_in.nil?
+        invalid_properties.push('invalid value for "expires_in", expires_in cannot be nil.')
+      end
+
+      if @interval.nil?
+        invalid_properties.push('invalid value for "interval", interval cannot be nil.')
       end
 
       invalid_properties
@@ -129,51 +154,62 @@ module VPNDetection
     # @return true if the model is valid
     def valid?
       warn '[DEPRECATED] the `valid?` method is obsolete'
-      return false if @md5.nil?
-      return false if @sha1.nil?
-      return false if @sha256.nil?
-      return false if @sha512.nil?
+      return false if @device_code.nil?
+      return false if @user_code.nil?
+      return false if @verification_uri.nil?
+      return false if @expires_in.nil?
+      return false if @interval.nil?
       true
     end
 
     # Custom attribute writer method with validation
-    # @param [Object] md5 Value to be assigned
-    def md5=(md5)
-      if md5.nil?
-        fail ArgumentError, 'md5 cannot be nil'
+    # @param [Object] device_code Value to be assigned
+    def device_code=(device_code)
+      if device_code.nil?
+        fail ArgumentError, 'device_code cannot be nil'
       end
 
-      @md5 = md5
+      @device_code = device_code
     end
 
     # Custom attribute writer method with validation
-    # @param [Object] sha1 Value to be assigned
-    def sha1=(sha1)
-      if sha1.nil?
-        fail ArgumentError, 'sha1 cannot be nil'
+    # @param [Object] user_code Value to be assigned
+    def user_code=(user_code)
+      if user_code.nil?
+        fail ArgumentError, 'user_code cannot be nil'
       end
 
-      @sha1 = sha1
+      @user_code = user_code
     end
 
     # Custom attribute writer method with validation
-    # @param [Object] sha256 Value to be assigned
-    def sha256=(sha256)
-      if sha256.nil?
-        fail ArgumentError, 'sha256 cannot be nil'
+    # @param [Object] verification_uri Value to be assigned
+    def verification_uri=(verification_uri)
+      if verification_uri.nil?
+        fail ArgumentError, 'verification_uri cannot be nil'
       end
 
-      @sha256 = sha256
+      @verification_uri = verification_uri
     end
 
     # Custom attribute writer method with validation
-    # @param [Object] sha512 Value to be assigned
-    def sha512=(sha512)
-      if sha512.nil?
-        fail ArgumentError, 'sha512 cannot be nil'
+    # @param [Object] expires_in Value to be assigned
+    def expires_in=(expires_in)
+      if expires_in.nil?
+        fail ArgumentError, 'expires_in cannot be nil'
       end
 
-      @sha512 = sha512
+      @expires_in = expires_in
+    end
+
+    # Custom attribute writer method with validation
+    # @param [Object] interval Value to be assigned
+    def interval=(interval)
+      if interval.nil?
+        fail ArgumentError, 'interval cannot be nil'
+      end
+
+      @interval = interval
     end
 
     # Checks equality by comparing each attribute.
@@ -181,10 +217,12 @@ module VPNDetection
     def ==(o)
       return true if self.equal?(o)
       self.class == o.class &&
-          md5 == o.md5 &&
-          sha1 == o.sha1 &&
-          sha256 == o.sha256 &&
-          sha512 == o.sha512
+          device_code == o.device_code &&
+          user_code == o.user_code &&
+          verification_uri == o.verification_uri &&
+          verification_uri_complete == o.verification_uri_complete &&
+          expires_in == o.expires_in &&
+          interval == o.interval
     end
 
     # @see the `==` method
@@ -196,7 +234,7 @@ module VPNDetection
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [md5, sha1, sha256, sha512].hash
+      [device_code, user_code, verification_uri, verification_uri_complete, expires_in, interval].hash
     end
 
     # Builds the object from hash

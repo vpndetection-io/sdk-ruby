@@ -14,19 +14,30 @@ require 'date'
 require 'time'
 
 module VPNDetection
-  class DatabaseMetadataColumn < ApiModelBase
-    attr_accessor :name
+  class EntitlementUsage < ApiModelBase
+    # Requests counted in the current window. The same number the lookup API gates on, and it can lag by a few seconds. 
+    attr_accessor :requests
 
-    attr_accessor :type
+    # What the plan includes. Zero on a plan that includes none.
+    attr_accessor :quota
 
-    attr_accessor :description
+    # Where we stop serving. NULL means never, which is the normal state of an uncapped paid plan and is not the same as zero. Above the quota and below this, requests are served and billed as overage. 
+    attr_accessor :hard_limit
+
+    # When the current allowance period began.
+    attr_accessor :window_start
+
+    # When the allowance next resets.
+    attr_accessor :window_end
 
     # Attribute mapping from ruby-style variable name to JSON key.
     def self.attribute_map
       {
-        :'name' => :'name',
-        :'type' => :'type',
-        :'description' => :'description'
+        :'requests' => :'requests',
+        :'quota' => :'quota',
+        :'hard_limit' => :'hard_limit',
+        :'window_start' => :'window_start',
+        :'window_end' => :'window_end'
       }
     end
 
@@ -43,15 +54,18 @@ module VPNDetection
     # Attribute type mapping.
     def self.openapi_types
       {
-        :'name' => :'String',
-        :'type' => :'String',
-        :'description' => :'String'
+        :'requests' => :'Integer',
+        :'quota' => :'Integer',
+        :'hard_limit' => :'Integer',
+        :'window_start' => :'Time',
+        :'window_end' => :'Time'
       }
     end
 
     # List of attributes with nullable: true
     def self.openapi_nullable
       Set.new([
+        :'hard_limit',
       ])
     end
 
@@ -59,32 +73,46 @@ module VPNDetection
     # @param [Hash] attributes Model attributes in the form of hash
     def initialize(attributes = {})
       if (!attributes.is_a?(Hash))
-        fail ArgumentError, "The input argument (attributes) must be a hash in `VPNDetection::DatabaseMetadataColumn` initialize method"
+        fail ArgumentError, "The input argument (attributes) must be a hash in `VPNDetection::EntitlementUsage` initialize method"
       end
 
       # check to see if the attribute exists and convert string to symbol for hash key
       acceptable_attribute_map = self.class.acceptable_attribute_map
       attributes = attributes.each_with_object({}) { |(k, v), h|
         if (!acceptable_attribute_map.key?(k.to_sym))
-          fail ArgumentError, "`#{k}` is not a valid attribute in `VPNDetection::DatabaseMetadataColumn`. Please check the name to make sure it's valid. List of attributes: " + acceptable_attribute_map.keys.inspect
+          fail ArgumentError, "`#{k}` is not a valid attribute in `VPNDetection::EntitlementUsage`. Please check the name to make sure it's valid. List of attributes: " + acceptable_attribute_map.keys.inspect
         end
         h[k.to_sym] = v
       }
 
-      if attributes.key?(:'name')
-        self.name = attributes[:'name']
+      if attributes.key?(:'requests')
+        self.requests = attributes[:'requests']
       else
-        self.name = nil
+        self.requests = nil
       end
 
-      if attributes.key?(:'type')
-        self.type = attributes[:'type']
+      if attributes.key?(:'quota')
+        self.quota = attributes[:'quota']
       else
-        self.type = nil
+        self.quota = nil
       end
 
-      if attributes.key?(:'description')
-        self.description = attributes[:'description']
+      if attributes.key?(:'hard_limit')
+        self.hard_limit = attributes[:'hard_limit']
+      else
+        self.hard_limit = nil
+      end
+
+      if attributes.key?(:'window_start')
+        self.window_start = attributes[:'window_start']
+      else
+        self.window_start = nil
+      end
+
+      if attributes.key?(:'window_end')
+        self.window_end = attributes[:'window_end']
+      else
+        self.window_end = nil
       end
     end
 
@@ -93,12 +121,20 @@ module VPNDetection
     def list_invalid_properties
       warn '[DEPRECATED] the `list_invalid_properties` method is obsolete'
       invalid_properties = Array.new
-      if @name.nil?
-        invalid_properties.push('invalid value for "name", name cannot be nil.')
+      if @requests.nil?
+        invalid_properties.push('invalid value for "requests", requests cannot be nil.')
       end
 
-      if @type.nil?
-        invalid_properties.push('invalid value for "type", type cannot be nil.')
+      if @quota.nil?
+        invalid_properties.push('invalid value for "quota", quota cannot be nil.')
+      end
+
+      if @window_start.nil?
+        invalid_properties.push('invalid value for "window_start", window_start cannot be nil.')
+      end
+
+      if @window_end.nil?
+        invalid_properties.push('invalid value for "window_end", window_end cannot be nil.')
       end
 
       invalid_properties
@@ -108,29 +144,51 @@ module VPNDetection
     # @return true if the model is valid
     def valid?
       warn '[DEPRECATED] the `valid?` method is obsolete'
-      return false if @name.nil?
-      return false if @type.nil?
+      return false if @requests.nil?
+      return false if @quota.nil?
+      return false if @window_start.nil?
+      return false if @window_end.nil?
       true
     end
 
     # Custom attribute writer method with validation
-    # @param [Object] name Value to be assigned
-    def name=(name)
-      if name.nil?
-        fail ArgumentError, 'name cannot be nil'
+    # @param [Object] requests Value to be assigned
+    def requests=(requests)
+      if requests.nil?
+        fail ArgumentError, 'requests cannot be nil'
       end
 
-      @name = name
+      @requests = requests
     end
 
     # Custom attribute writer method with validation
-    # @param [Object] type Value to be assigned
-    def type=(type)
-      if type.nil?
-        fail ArgumentError, 'type cannot be nil'
+    # @param [Object] quota Value to be assigned
+    def quota=(quota)
+      if quota.nil?
+        fail ArgumentError, 'quota cannot be nil'
       end
 
-      @type = type
+      @quota = quota
+    end
+
+    # Custom attribute writer method with validation
+    # @param [Object] window_start Value to be assigned
+    def window_start=(window_start)
+      if window_start.nil?
+        fail ArgumentError, 'window_start cannot be nil'
+      end
+
+      @window_start = window_start
+    end
+
+    # Custom attribute writer method with validation
+    # @param [Object] window_end Value to be assigned
+    def window_end=(window_end)
+      if window_end.nil?
+        fail ArgumentError, 'window_end cannot be nil'
+      end
+
+      @window_end = window_end
     end
 
     # Checks equality by comparing each attribute.
@@ -138,9 +196,11 @@ module VPNDetection
     def ==(o)
       return true if self.equal?(o)
       self.class == o.class &&
-          name == o.name &&
-          type == o.type &&
-          description == o.description
+          requests == o.requests &&
+          quota == o.quota &&
+          hard_limit == o.hard_limit &&
+          window_start == o.window_start &&
+          window_end == o.window_end
     end
 
     # @see the `==` method
@@ -152,7 +212,7 @@ module VPNDetection
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [name, type, description].hash
+      [requests, quota, hard_limit, window_start, window_end].hash
     end
 
     # Builds the object from hash
