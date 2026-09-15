@@ -5,7 +5,7 @@
 # `path:` here would make every test pass against the working tree instead.
 source 'https://rubygems.org'
 
-gem 'vpndetection', '~> 4.0'
+gem 'vpndetection', '~> 5.0'
 
 # minitest 6 requires Ruby 3.2, and the gem supports 3.1.
 gem 'minitest', '~> 5.25'
