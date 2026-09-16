@@ -53,9 +53,13 @@ module VPNDetection
     # is true for every value it can be given, so the database download's 302
     # would be chased and a multi-gigabyte dataset read into memory. Nothing
     # this API serves is meant to be followed.
+    #
+    # `opts[:timeout]` is a per-call override of the configured bound, which the
+    # generated client would otherwise apply to every request it builds.
     def build_request(http_method, path, opts = {})
       request = super
       request.options[:followlocation] = false
+      request.options[:timeout] = opts[:timeout] unless opts[:timeout].nil?
       request
     end
 
@@ -84,37 +88,41 @@ module VPNDetection
       Typhoeus::Request.new(url, options)
     end
 
-    def lookup_request(ip)
+    def lookup_request(ip, timeout: nil)
       build_request(
         :GET, LOOKUP_PATH.sub('{ip}', CGI.escape(ip.to_s)),
         header_params: { 'Accept' => 'application/json' },
         auth_names: %w[bearerAuth apiKeyHeader apiKeyQuery],
+        timeout: timeout,
       )
     end
 
-    def myip_request
+    def myip_request(timeout: nil)
       build_request(
         :GET, MYIP_PATH,
         header_params: { 'Accept' => 'application/json' },
         auth_names: %w[bearerAuth apiKeyHeader apiKeyQuery],
+        timeout: timeout,
       )
     end
 
-    def entitlement_request
+    def entitlement_request(timeout: nil)
       build_request(
         :GET, ENTITLEMENT_PATH,
         header_params: { 'Accept' => 'application/json' },
         auth_names: %w[bearerAuth apiKeyHeader apiKeyQuery],
+        timeout: timeout,
       )
     end
 
     # The one request with a body: the batch.
-    def batch_request(ips)
+    def batch_request(ips, timeout: nil)
       build_request(
         :POST, BATCH_PATH,
         header_params: { 'Accept' => 'application/json', 'Content-Type' => 'application/json' },
         body: { ips: ips },
         auth_names: %w[bearerAuth apiKeyHeader apiKeyQuery],
+        timeout: timeout,
       )
     end
 

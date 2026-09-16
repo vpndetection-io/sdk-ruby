@@ -28,6 +28,10 @@ module VPNDetection
     # @param cache_ttl [Numeric] how long an answer stays fresh, in seconds.
     # @param concurrency [Integer] batch requests - chunks of up to 1000 addresses - in flight during a batch.
     # @param retries [Integer] extra attempts for a transient failure.
+    # @param timeout [Numeric] seconds one request may take before it is
+    #   abandoned. Applies per ATTEMPT, so a retried call may take longer in
+    #   total, and every call that takes `retries:` also takes `timeout:` to
+    #   override it. A dataset transfer bounds only its connect phase with it.
     # @param transport [Transport, nil] override the HTTP layer, mostly for tests.
     def initialize(api_key: nil, base_url: DEFAULT_BASE_URL, cache: true,
                    cache_max_size: DEFAULT_CACHE_MAX_SIZE, cache_ttl: DEFAULT_CACHE_TTL,
@@ -57,14 +61,17 @@ module VPNDetection
     #
     # A bogon is answered locally and never reaches the network. Everything else
     # is served, then cached for this instance.
-    def lookup(ip, retries: nil)
+    #
+    # @param retries [Integer, nil] extra attempts, for THIS call only.
+    # @param timeout [Numeric, nil] seconds each attempt may take, for THIS call only.
+    def lookup(ip, retries: nil, timeout: nil)
       return Bogon.result(ip) if Bogon.bogon?(ip)
 
       hit = @cache&.get(ip)
       return hit unless hit.nil?
 
       result = Retries.with_retries(retries || @retries) do
-        Transport.lookup_result(@transport.lookup_request(ip).run)
+        Transport.lookup_result(@transport.lookup_request(ip, timeout: timeout).run)
       end
       @cache&.set(ip, result)
       result
@@ -80,9 +87,9 @@ module VPNDetection
     # Deliberately NOT cached. The cache is keyed by address, and which address
     # this is IS the question: a machine that moves between networks would
     # otherwise be told where it used to be.
-    def my_ip(retries: nil)
+    def my_ip(retries: nil, timeout: nil)
       Retries.with_retries(retries || @retries) do
-        Transport.lookup_result(@transport.myip_request.run)
+        Transport.lookup_result(@transport.myip_request(timeout: timeout).run)
       end
     end
 
@@ -105,9 +112,9 @@ module VPNDetection
     # cached answer is a wrong one within seconds of the next request.
     #
     # @return [Entitlement]
-    def my_entitlement(retries: nil)
+    def my_entitlement(retries: nil, timeout: nil)
       Retries.with_retries(retries || @retries) do
-        Transport.entitlement_result(@transport.entitlement_request.run)
+        Transport.entitlement_result(@transport.entitlement_request(timeout: timeout).run)
       end
     end
 
@@ -124,8 +131,9 @@ module VPNDetection
     #
     # @param concurrency [Integer, nil] chunks in flight, for THIS batch only.
     # @param retries [Integer, nil] extra attempts for a failed chunk, for THIS batch only.
+    # @param timeout [Numeric, nil] seconds each chunk's attempt may take, for THIS batch only.
     # @return [Hash{String => Result, Error}] in the order the addresses were given
-    def lookup_batch(ips, concurrency: nil, retries: nil)
+    def lookup_batch(ips, concurrency: nil, retries: nil, timeout: nil)
       addresses = ips.to_a.uniq
       answers = {}
       pending = []
@@ -136,7 +144,7 @@ module VPNDetection
       end
       unless pending.empty?
         run_batch(pending.each_slice(BATCH_MAX).to_a, answers,
-                  concurrency || @concurrency, retries || @retries)
+                  concurrency || @concurrency, retries || @retries, timeout)
       end
 
       # Reinstated in input order: a hydra settles in completion order, and a
@@ -150,12 +158,12 @@ module VPNDetection
     # would silently cap a per-call concurrency at the client's setting, and
     # would not be safe to drive from two threads either. Each request is one
     # chunk of up to 1000 addresses.
-    def run_batch(chunks, answers, concurrency, retries)
+    def run_batch(chunks, answers, concurrency, retries, timeout)
       hydra = Typhoeus::Hydra.new(max_concurrency: concurrency)
       attempts = Hash.new(0)
 
       enqueue = lambda do |chunk|
-        request = @transport.batch_request(chunk)
+        request = @transport.batch_request(chunk, timeout: timeout)
         request.on_complete do |response|
           outcome = settle(chunk, response, attempts, retries, enqueue)
           answers.merge!(outcome) unless outcome.nil?

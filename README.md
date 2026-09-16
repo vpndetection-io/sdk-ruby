@@ -70,7 +70,7 @@ Usage counts against the anniversary of your subscription, not the calendar mont
 
 ### Batch lookup
 
-Look up many addresses at once. Bogons and cached answers are handled locally, and everything else goes to the batch endpoint in chunks of up to 1000 addresses, in parallel:
+Look up as many addresses as you like at once. Bogons and cached answers are handled locally, and everything else goes to the batch endpoint in chunks of up to 1000 addresses, in parallel:
 
 ```ruby
 results = client.lookup_batch(['45.83.91.1', '8.8.8.8', '1.1.1.1'])
@@ -86,10 +86,10 @@ end
 
 Results are keyed by address, in the order you first listed each one, so duplicates in your list collapse into a single entry and one address failing never loses the rest: it carries its error as its value, with the status the API would have given that address on its own.
 
-How many chunks are in flight at once, and how many times a failed chunk is retried, are configurable per call:
+How many chunks are in flight at once, how many times a failed chunk is retried, and how long each chunk's request may take are configurable per call:
 
 ```ruby
-results = client.lookup_batch(many_ips, concurrency: 4, retries: 4)
+results = client.lookup_batch(many_ips, concurrency: 4, retries: 4, timeout: 5)
 ```
 
 ### Caching
@@ -151,6 +151,16 @@ end
 `kind` is one of `:bad_request`, `:unauthorized`, `:forbidden`, `:rate_limited`, `:quota_exceeded`, `:server_error` or `:network`.
 
 Note that `:rate_limited` and `:quota_exceeded` both arrive as HTTP 429 and are not the same thing. A rate limit is when the API faces extreme traffic bursts and so retrying later works; but a spent quota needs your allowance raised or the window to roll over. The library retries rate limits for you, but not if your quota is exceeded.
+
+### Timeouts and retries
+
+```ruby
+client = VPNDetection::Client.new(timeout: 30, retries: 4)
+
+result = client.lookup('45.83.91.1', timeout: 2, retries: 0)
+```
+
+`timeout` is in seconds and bounds each attempt, so a call that is retried can take longer in total. The client's values are defaults: `lookup`, `lookup_batch`, `my_ip` and `my_entitlement` each take `timeout:` and `retries:` for that call alone. A database download bounds only its connection with it, because a whole transfer can take minutes.
 
 ### Database downloads
 

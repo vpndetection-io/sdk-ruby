@@ -155,6 +155,58 @@ class ClientTest < Minitest::Test
     server&.stop
   end
 
+  # The per-call bound is set BELOW the client's against a server that stalls
+  # past both, so a call that ignored it would wait out the client's bound
+  # instead, and the elapsed time says which one fired.
+  def test_a_per_call_timeout_below_the_clients_is_the_one_that_fires
+    server = TestServer.new(delay: 8)
+    client = VPNDetection::Client.new(base_url: server.base_url, timeout: 4, retries: 0, cache: false)
+    calls = {
+      lookup: -> { client.lookup('1.1.1.1', timeout: 0.3) },
+      my_ip: -> { client.my_ip(timeout: 0.3) },
+      my_entitlement: -> { client.my_entitlement(timeout: 0.3) },
+      lookup_batch: -> { client.lookup_batch(['1.1.1.1'], timeout: 0.3)['1.1.1.1'] },
+    }
+
+    calls.each do |name, call|
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      error = begin
+        call.call
+      rescue VPNDetection::Error => e
+        e
+      end
+      elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+
+      assert_kind_of VPNDetection::Error, error, name
+      assert_equal :network, error.kind, name
+      assert error.retryable?, "#{name}: a timeout is a transport failure, and worth retrying"
+      assert_operator elapsed, :<, 2, "#{name}: the client's 4s bound fired rather than the per-call one"
+    end
+  ensure
+    server&.stop
+  end
+
+  # No cap on what one call accepts: chunking to the endpoint's 1000 is the
+  # client's job, so 2,500 addresses are three requests rather than an error.
+  def test_a_batch_of_2500_addresses_is_three_requests_and_one_answer_each
+    addresses = (0...2500).map { |n| "9.1.#{n / 256}.#{n % 256}" }
+    lock = Mutex.new
+    sizes = []
+    server = TestServer.new(delay: 0) do |_path, body|
+      lock.synchronize { sizes << JSON.parse(body)['ips'].length }
+      [200, TestServer.batch_body(body)]
+    end
+
+    got = VPNDetection::Client.new(base_url: server.base_url, cache: false).lookup_batch(addresses)
+
+    assert_equal ['/batch'] * 3, server.paths
+    assert_equal [500, 1000, 1000], sizes.sort
+    assert_equal addresses, got.keys
+    addresses.each { |ip| assert_equal ip, got[ip].ip, "#{ip} should be answered for itself" }
+  ensure
+    server&.stop
+  end
+
   def test_a_keyless_client_presents_no_credential_at_all
     request = VPNDetection::Transport.new(VPNDetection::Transport::Config.new).lookup_request('1.1.1.1')
 
