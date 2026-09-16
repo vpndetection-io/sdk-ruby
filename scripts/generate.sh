@@ -42,6 +42,10 @@ NAMES="listDatabases_200_response=DatabaseList"
 NAMES="${NAMES},listDownloads_200_response=DownloadList"
 NAMES="${NAMES},databaseChecksum_200_response=DatabaseChecksumsResponse"
 
+# The two `mslm:` members of TokenResponse would otherwise surface as
+# `mslm_apikey_id` and `mslm_apikey`.
+PROPERTIES="mslm:apikey_id=apikey_id,mslm:apikey=apikey"
+
 rm -rf .gen
 mkdir -p .gen
 
@@ -55,6 +59,7 @@ docker run --rm \
     --model-name-mappings "$MODELS" \
     --api-name-suffix WireApi \
     --inline-schema-name-mappings "$NAMES" \
+    --name-mappings "$PROPERTIES" \
     --additional-properties="$PROPS" \
     >/dev/null
 
@@ -73,8 +78,27 @@ function patch_rails_constant() {
         .gen/lib/vpndetection/configuration.rb
 }
 
-rm -rf lib/vpndetection/{api,models} lib/vpndetection/{api_client,api_error,api_model_base,configuration}.rb
+# The generated OAuth class is public by accident and nothing calls it:
+# client.oauth is the surface. Deprecated for the next major to delete
+# (docs/sdk/deprecation.md, the ledger). `category: :deprecated` prints only
+# where the caller has turned deprecation warnings on, which is Ruby's contract.
+function deprecate_authorization_api() {
+    local api=".gen/lib/vpndetection/api/authorization_wire_api.rb"
+    local tag="  # @deprecated Since 5.2.0, and removed in the next major. Use {VPNDetection::Client#oauth}."
+    local warning='      warn("#{self.class} is deprecated; use VPNDetection::Client#oauth", category: :deprecated)'
+    sed -i \
+        -e "s|^  class AuthorizationWireApi\$|${tag}\n&|" \
+        -e "s|^    def initialize(api_client = ApiClient.default)\$|&\n${warning}|" \
+        "$api"
+    if [ "$(grep -c -e '^  # @deprecated ' -e 'category: :deprecated)$' "$api")" != 2 ] ; then
+        echo "could not mark ${api} deprecated: its class declaration changed shape" >&2
+        exit 1
+    fi
+}
+
 patch_rails_constant
+deprecate_authorization_api
+rm -rf lib/vpndetection/{api,models} lib/vpndetection/{api_client,api_error,api_model_base,configuration}.rb
 cp -R .gen/lib/vpndetection/api lib/vpndetection/api
 cp -R .gen/lib/vpndetection/models lib/vpndetection/models
 for f in api_client api_error api_model_base configuration ; do
