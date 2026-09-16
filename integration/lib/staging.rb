@@ -33,8 +33,9 @@ module Staging
   #
   # Only derived facts leave here. An assertion that fails prints its operands,
   # and these logs are public, so which tier's key was carried is recorded as a
-  # name and the key itself is never held.
-  Fact = Struct.new(:origin, :path, :tiers, keyword_init: true)
+  # name and the key itself is never held. `ips` is what a POST /batch asked
+  # about, which is the test's own input.
+  Fact = Struct.new(:origin, :path, :tiers, :ips, keyword_init: true)
 
   module_function
 
@@ -74,8 +75,18 @@ module Staging
       rung[:tier] if key && (request.url.include?(key) || headers_carry?(request, key))
     end
     uri = URI.parse(request.url)
-    facts << Fact.new(origin: "#{uri.scheme}://#{uri.host}", path: uri.path, tiers: carried)
+    facts << Fact.new(origin: "#{uri.scheme}://#{uri.host}", path: uri.path, tiers: carried,
+                      ips: batch_ips(request))
     true
+  end
+
+  def batch_ips(request)
+    body = request.options[:body]
+    return [] unless body.is_a?(String) && !body.empty?
+
+    JSON.parse(body).fetch('ips', [])
+  rescue JSON::ParserError
+    []
   end
 
   def headers_carry?(request, key)

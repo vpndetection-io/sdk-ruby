@@ -112,10 +112,11 @@ class LookupTest < Minitest::Test
     results = client.lookup_batch([Staging::PROBE, '8.8.8.8', Staging::PROBE, '10.0.0.1', '8.8.8.8'])
 
     assert_equal [Staging::PROBE, '8.8.8.8', '10.0.0.1'], results.keys
-    # Distinct paths rather than a call count, so a retry against a wobbling
-    # staging cannot read as a failure to deduplicate.
-    asked = Staging.facts[before..].map(&:path).uniq.sort
-    assert_equal ["/#{Staging::PROBE}", '/8.8.8.8'].sort, asked
+    # Distinct paths and addresses rather than a call count, so a retry against a
+    # wobbling staging cannot read as a failure to deduplicate.
+    sent = Staging.facts[before..]
+    assert_equal ['/batch'], sent.map(&:path).uniq
+    assert_equal [Staging::PROBE, '8.8.8.8'].sort, sent.flat_map(&:ips).uniq.sort
     assert results['10.0.0.1'].bogon?, '10.0.0.1 was not answered locally'
     [Staging::PROBE, '8.8.8.8'].each do |ip|
       refute_kind_of VPNDetection::Error, results[ip], "#{ip} failed"
