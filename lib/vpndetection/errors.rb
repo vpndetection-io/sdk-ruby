@@ -38,25 +38,26 @@ module VPNDetection
     def self.from_status(status, headers, body, message: nil)
       message ||= message_of(body) || "request failed with status #{status}"
       retry_after = parse_retry_after(header(headers, 'retry-after'))
+      kind = kind_for(status, headers)
 
+      new(kind, message, status: status, retry_after_seconds: kind == :rate_limited ? retry_after : nil)
+    end
+
+    # What a response with this status is, whatever its body says.
+    def self.kind_for(status, headers)
       case status
-      when 429
-        # Present means transient, absent means an allowance is spent. Nothing
-        # else in the response separates the two.
-        if retry_after.nil?
-          new(:quota_exceeded, message, status: status)
-        else
-          new(:rate_limited, message, status: status, retry_after_seconds: retry_after)
-        end
-      when 400 then new(:bad_request, message, status: status)
-      when 401 then new(:unauthorized, message, status: status)
-      when 403 then new(:forbidden, message, status: status)
+      # Present means transient, absent means an allowance is spent. Nothing
+      # else in the response separates the two.
+      when 429 then parse_retry_after(header(headers, 'retry-after')).nil? ? :quota_exceeded : :rate_limited
+      when 400 then :bad_request
+      when 401 then :unauthorized
+      when 403 then :forbidden
       # Every other 4xx is a CLIENT error. Classifying on the RANGE rather than
       # on an enumerated list is what keeps a 404 from a bad dataset id falling
       # through to the retryable server_error default and being retried twice
       # before it fails.
-      when 400..499 then new(:bad_request, message, status: status)
-      else new(:server_error, message, status: status)
+      when 400..499 then :bad_request
+      else :server_error
       end
     end
 
@@ -111,4 +112,44 @@ module VPNDetection
 
     private_class_method :header, :message_of, :parse_retry_after
   end
+
+  # The authorization server refusing an OAuth request: a 4xx whose body names an
+  # RFC 6749 `error` code. Never retryable, whatever the status, because every
+  # code it can carry answers the request as it was made.
+  #
+  # Not `OauthError`: that constant is the generated model of the error body.
+  class OauthRequestError < Error
+    # The `error` code, such as `slow_down` or `invalid_grant`.
+    attr_reader :error_code
+    # `error_description` when the server sent one as a string, otherwise nil.
+    attr_reader :error_description
+
+    # The refusal a response carries, as the most specific class its code has.
+    def self.for_code(error_code, error_description, status:, headers: {})
+      klass = case error_code
+              when 'access_denied' then OauthAccessDeniedError
+              when 'expired_token' then OauthExpiredTokenError
+              else OauthRequestError
+              end
+      klass.new(error_code, error_description, kind: Error.kind_for(status, headers), status: status)
+    end
+
+    def initialize(error_code, error_description = nil, kind: :bad_request, status: nil)
+      super(kind, error_description.nil? ? error_code : "#{error_code}: #{error_description}", status: status)
+      @error_code = error_code
+      @error_description = error_description
+    end
+
+    def retryable?
+      false
+    end
+  end
+
+  # The person refused the sign-in. Their device code is spent.
+  class OauthAccessDeniedError < OauthRequestError; end
+
+  # The device code is no longer valid: it expired, or was already exchanged or
+  # refused. Raised with no status when {OauthApi#poll_device_token} reaches the
+  # code's lifetime before the server says so.
+  class OauthExpiredTokenError < OauthRequestError; end
 end

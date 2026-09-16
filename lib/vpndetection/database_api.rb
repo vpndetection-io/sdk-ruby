@@ -63,11 +63,7 @@ module VPNDetection
       partial = "#{path}.part"
       begin
         url = download_url(id, format)
-        written = Retries.with_retries(@retries) do
-          # Reopened per attempt, so a retry restarts the file rather than
-          # appending a second copy of the body to a half-written one.
-          File.open(partial, 'wb') { |file| stream(url) { |chunk| file.write(chunk) } }
-        end
+        written = File.open(partial, 'wb') { |file| transfer(url) { |chunk| file.write(chunk) } }
         File.rename(partial, path)
       rescue StandardError
         File.delete(partial) if File.exist?(partial)
@@ -84,11 +80,9 @@ module VPNDetection
     # and use {#download} for anything you have not measured.
     def download_bytes(id, format)
       url = download_url(id, format)
-      Retries.with_retries(@retries) do
-        bytes = String.new(encoding: Encoding::BINARY)
-        stream(url) { |chunk| bytes << chunk }
-        bytes
-      end
+      bytes = String.new(encoding: Encoding::BINARY)
+      transfer(url) { |chunk| bytes << chunk }
+      bytes
     end
 
     private
@@ -104,6 +98,20 @@ module VPNDetection
 
       raise ArgumentError,
             "invalid value for \"format\", must be one of #{DatabaseFormat.all_vars}"
+    end
+
+    # The transfer of a presigned link, retried only while nothing has reached the
+    # block: object storage failing before the body is as transient as any
+    # outage, while a body that dies part way is not fetched again, because the
+    # bytes already handed over cannot be taken back.
+    def transfer(url, &sink)
+      delivered = false
+      Retries.with_retries(@retries, retry_if: -> { !delivered }) do
+        stream(url) do |chunk|
+          delivered = true
+          sink.call(chunk)
+        end
+      end
     end
 
     # Runs one transfer of a presigned link, handing each chunk to the block, and

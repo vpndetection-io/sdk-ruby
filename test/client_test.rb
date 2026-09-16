@@ -207,6 +207,42 @@ class ClientTest < Minitest::Test
     server&.stop
   end
 
+  # A hydra that may run nothing never finishes, so a limit below 1 is the
+  # caller's mistake to hear about at once, not a batch that hangs.
+  def test_a_batch_concurrency_below_one_is_refused_before_any_request
+    calls = stub_lookups({})
+    client = VPNDetection::Client.new
+
+    [0, -1, 0.5].each do |limit|
+      error = assert_raises(VPNDetection::Error) { client.lookup_batch(['9.9.9.9'], concurrency: limit) }
+      assert_equal :bad_request, error.kind, "concurrency #{limit}"
+      refute error.retryable?
+    end
+    error = assert_raises(VPNDetection::Error) do
+      VPNDetection::Client.new(concurrency: 0).lookup_batch(['9.9.9.9'])
+    end
+    assert_equal :bad_request, error.kind, 'a client built with concurrency 0'
+    assert_empty calls
+  end
+
+  def test_the_default_timeout_is_thirty_seconds_per_attempt
+    transport = VPNDetection::Client.new.instance_variable_get(:@transport)
+
+    assert_equal 30, transport.config.timeout
+  end
+
+  # The bound must cover the BODY: a limit that stops at the response head lets a
+  # body stalled after its headers run for as long as the server likes.
+  def test_a_body_stalled_after_its_headers_is_bounded
+    assert_body_bounded(stall: 8)
+  end
+
+  # A byte every 20 ms never leaves one read waiting long, so only a bound on the
+  # whole attempt ends it.
+  def test_a_body_trickled_a_byte_at_a_time_is_bounded
+    assert_body_bounded(trickle: 0.02)
+  end
+
   def test_a_keyless_client_presents_no_credential_at_all
     request = VPNDetection::Transport.new(VPNDetection::Transport::Config.new).lookup_request('1.1.1.1')
 
@@ -318,4 +354,43 @@ class ClientTest < Minitest::Test
     assert_raises(VPNDetection::Error) { client.my_entitlement }
   end
 
+  private
+
+  # Each call's per-call bound (0.3 s) fires first, then a call with no override
+  # waits for the client's own (1 s), and the elapsed time says which one fired.
+  def assert_body_bounded(pace)
+    padded = "#{JSON.generate({ 'ip' => '1.1.1.1', 'is_vpn' => false })}#{' ' * 400}"
+    server = TestServer.new(delay: 0) { |_path, _body| [200, padded, {}, pace] }
+    client = VPNDetection::Client.new(base_url: server.base_url, timeout: 1, retries: 0, cache: false)
+    per_call = {
+      lookup: -> { client.lookup('1.1.1.1', timeout: 0.3) },
+      lookup_batch: -> { client.lookup_batch(['1.1.1.1'], timeout: 0.3)['1.1.1.1'] },
+      oauth_exchange: -> { client.oauth.exchange_device_code('cli', 'mo_dc_x', timeout: 0.3) },
+    }
+    client_bound = {
+      my_entitlement: -> { client.my_entitlement },
+      database_list: -> { client.database.list },
+      oauth_metadata: -> { client.oauth.metadata },
+    }
+
+    per_call.each { |name, call| assert_times_out(name, call, 0.25..0.9) }
+    client_bound.each { |name, call| assert_times_out(name, call, 0.9..2.5) }
+  ensure
+    server&.stop
+  end
+
+  def assert_times_out(name, call, window)
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    error = begin
+      call.call
+    rescue VPNDetection::Error => e
+      e
+    end
+    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+
+    assert_kind_of VPNDetection::Error, error, name
+    assert_equal :network, error.kind, "#{name}: #{error.message}"
+    assert error.retryable?, "#{name}: a timeout is a transport failure, and worth retrying"
+    assert_includes window, elapsed, "#{name} settled after #{elapsed.round(2)}s"
+  end
 end

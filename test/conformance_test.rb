@@ -153,6 +153,19 @@ class ConformanceTest < Minitest::Test
     end
   end
 
+  # No cap on what one call takes: the chunking is the client's job.
+  def test_an_uncapped_batch_is_chunked_rather_than_refused
+    c = corpus_batch('uncapped-input-is-chunked')
+    calls = stub_lookups(c['input'].to_h { |ip| [ip, { body: { 'ip' => ip, 'is_vpn' => false } }] })
+    got = VPNDetection::Client.new(cache: false).lookup_batch(c['input'])
+
+    assert_equal c['expect']['httpRequests'], calls.length
+    assert_equal c['expect']['keyCount'], got.size
+    c['input'].each do |ip|
+      assert_equal ip, got[ip].ip, "#{ip} should be answered for itself"
+    end
+  end
+
   # A per-entry failure carries no headers, so its 429 can only be a spent
   # allowance, and a 500 is the server's; neither is retried per entry, because
   # retries belong to the call and the call succeeded.

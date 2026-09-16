@@ -20,6 +20,7 @@ require 'vpndetection/cache'
 require 'vpndetection/retries'
 require 'vpndetection/transport'
 require 'vpndetection/database_api'
+require 'vpndetection/oauth_api'
 require 'vpndetection/client'
 
 # The official Ruby client library for the VPNDetection API.

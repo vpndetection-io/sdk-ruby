@@ -133,12 +133,13 @@ class TestServer
     path, request_body = request
     enter(path)
     sleep(@delay)
-    status, body, headers = @handler.call(path, request_body)
+    status, body, headers, pace = @handler.call(path, request_body)
     extra = (headers || {}).map { |name, value| "#{name}: #{value}\r\n" }.join
     connection.print(
       "HTTP/1.1 #{status} OK\r\nContent-Type: application/json\r\n#{extra}" \
-      "Content-Length: #{body.bytesize}\r\nConnection: close\r\n\r\n#{body}",
+      "Content-Length: #{body.bytesize}\r\nConnection: close\r\n\r\n",
     )
+    write_body(connection, body, pace)
   ensure
     leave
     begin
@@ -146,6 +147,29 @@ class TestServer
     rescue IOError
       nil
     end
+  end
+
+  # The headers are already out, so a stall here is one no bound that stops at
+  # the headers can see. `stall:` sends half the body and then waits; `trickle:`
+  # sends a byte per gap, so no single read ever waits long.
+  def write_body(connection, body, pace)
+    case pace
+    in nil
+      connection.print(body)
+    in { stall: seconds }
+      connection.print(body.byteslice(0, body.bytesize / 2))
+      connection.flush
+      sleep(seconds)
+      connection.print(body.byteslice(body.bytesize / 2, body.bytesize))
+    in { trickle: gap }
+      body.each_char do |char|
+        connection.print(char)
+        connection.flush
+        sleep(gap)
+      end
+    end
+  rescue Errno::EPIPE, Errno::ECONNRESET
+    nil
   end
 
   def read_request(connection)

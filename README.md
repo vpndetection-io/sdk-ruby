@@ -155,12 +155,12 @@ Note that `:rate_limited` and `:quota_exceeded` both arrive as HTTP 429 and are 
 ### Timeouts and retries
 
 ```ruby
-client = VPNDetection::Client.new(timeout: 30, retries: 4)
+client = VPNDetection::Client.new(timeout: 10, retries: 4)
 
 result = client.lookup('45.83.91.1', timeout: 2, retries: 0)
 ```
 
-`timeout` is in seconds and bounds each attempt, so a call that is retried can take longer in total. The client's values are defaults: `lookup`, `lookup_batch`, `my_ip` and `my_entitlement` each take `timeout:` and `retries:` for that call alone. A database download bounds only its connection with it, because a whole transfer can take minutes.
+`timeout` is in seconds and bounds each attempt, body included, so a call that is retried can take longer in total. It defaults to 30 seconds; before 5.2.0 the default was 10, so pass `timeout: 10` to keep that bound. The client's values are defaults: `lookup`, `lookup_batch`, `my_ip` and `my_entitlement` each take `timeout:` and `retries:` for that call alone, and every `client.oauth` method takes `timeout:`. A database download bounds only its connection with it, because a whole transfer can take minutes.
 
 ### Database downloads
 
@@ -176,6 +176,23 @@ bytes = client.database.download_bytes('cdn_ip_v1', 'csvgz')
 ```
 
 `download` streams straight to disk, so nothing bigger than a chunk is ever held in memory whatever the database weighs, and it writes through a neighboring `.part` file so a transfer that dies half way leaves no truncated copy behind. `download_url` hands back the time-limited link and follows nothing, for when you want to run the transfer yourself. `download_bytes` holds the whole file in memory, and the catalog runs from `cdn_ip_v1` at 10 KB to `resproxy_ip_90d_v1` at 1.79 GB, so reach for `download` for anything you have not measured.
+
+### Sign in with OAuth (device flow)
+
+A program running on a person's own machine can let them sign in with their browser and pick one of their API keys, instead of asking them to paste one.
+
+```ruby
+client = VPNDetection::Client.new
+device = client.oauth.device_authorization('your-client-id', scope: 'account.read apikeys.read apikeys.reveal')
+puts "Open #{device.verification_uri} and enter #{device.user_code}"
+
+token = client.oauth.poll_device_token('your-client-id', device)
+raise 'no API key was picked' if token.apikey.nil?
+
+keyed = VPNDetection::Client.new(api_key: token.apikey)
+```
+
+`poll_device_token` raises `VPNDetection::OauthAccessDeniedError` when the person refuses and `VPNDetection::OauthExpiredTokenError` when the code expires first. Client IDs are issued on request from support@vpndetection.io, and `client.oauth.revoke('your-client-id', token.refresh_token)` signs the machine out.
 
 ### Absent is not false
 

@@ -11,12 +11,14 @@ module VPNDetection
 
     module_function
 
-    def with_retries(retries)
+    # `retry_if`, when given, is asked after each retryable failure, and a false
+    # answer ends the attempts there.
+    def with_retries(retries, retry_if: nil)
       attempt = 0
       begin
         yield
       rescue Error => e
-        raise unless e.retryable? && attempt < retries
+        raise unless e.retryable? && attempt < retries && (retry_if.nil? || retry_if.call)
 
         attempt += 1
         sleep(delay_for(e, attempt))

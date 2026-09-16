@@ -8,7 +8,7 @@ module VPNDetection
   DEFAULT_CACHE_TTL = 3600
   DEFAULT_CONCURRENCY = 8
   DEFAULT_RETRIES = 2
-  DEFAULT_TIMEOUT = 10
+  DEFAULT_TIMEOUT = 30
   # The most addresses POST /batch takes in one call; a larger batch is sent in
   # chunks of this size.
   BATCH_MAX = 1000
@@ -20,6 +20,8 @@ module VPNDetection
   class Client
     # The licensed dataset downloads, for keys that carry the `db.download` scope.
     attr_reader :database
+    # Signing a person in with OAuth, which needs no API key at all.
+    attr_reader :oauth
 
     # @param api_key [String, nil] omit it entirely to use the free tier, which
     #   answers `ip` and `is_vpn` and allows 1000 requests per day per source
@@ -44,6 +46,7 @@ module VPNDetection
       @concurrency = concurrency
       @retries = retries
       @database = DatabaseApi.new(@transport, retries: retries)
+      @oauth = OauthApi.new(@transport, retries: retries)
     end
 
     # Whether an address is private, loopback, link-local, documentation,
@@ -129,11 +132,17 @@ module VPNDetection
     # per-entry failure with the status the single lookup would have answered,
     # and a chunk that fails as a whole marks every address in it.
     #
-    # @param concurrency [Integer, nil] chunks in flight, for THIS batch only.
+    # @param concurrency [Integer, nil] chunks in flight, for THIS batch only. Below 1
+    #   is refused as `:bad_request` before any request, since nothing could ever run.
     # @param retries [Integer, nil] extra attempts for a failed chunk, for THIS batch only.
     # @param timeout [Numeric, nil] seconds each chunk's attempt may take, for THIS batch only.
     # @return [Hash{String => Result, Error}] in the order the addresses were given
     def lookup_batch(ips, concurrency: nil, retries: nil, timeout: nil)
+      limit = concurrency || @concurrency
+      unless limit.is_a?(Numeric) && limit >= 1
+        raise Error.new(:bad_request, "concurrency must be at least 1, not #{limit.inspect}")
+      end
+
       addresses = ips.to_a.uniq
       answers = {}
       pending = []
@@ -143,8 +152,7 @@ module VPNDetection
         hit.nil? ? pending << ip : answers[ip] = hit
       end
       unless pending.empty?
-        run_batch(pending.each_slice(BATCH_MAX).to_a, answers,
-                  concurrency || @concurrency, retries || @retries, timeout)
+        run_batch(pending.each_slice(BATCH_MAX).to_a, answers, limit, retries || @retries, timeout)
       end
 
       # Reinstated in input order: a hydra settles in completion order, and a
