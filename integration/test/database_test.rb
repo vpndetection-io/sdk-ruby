@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # The licensed-download half, which only the max key can reach: it is the tier
-# holding dataset licences, and db.download is a scope the other three keys do
+# holding dataset licenses, and db.download is a scope the other three keys do
 # not carry.
 #
 # The transfer is budgeted before it starts. Metadata publishes a size per
@@ -23,7 +23,7 @@ class DatabaseTest < Minitest::Test
   # tripping it means the suite is pointed somewhere unintended, which is exactly
   # when a transfer must not go ahead.
   CEILING = 8 * 1024 * 1024
-  # A real catalogue id the max organization holds no licence for.
+  # A real catalogue id the max organization holds no license for.
   UNLICENSED_ID = 'hosting_ip_v1'
   HEX_DIGEST = /\A[0-9a-f]{64}\z/
 
@@ -55,7 +55,7 @@ class DatabaseTest < Minitest::Test
       assert_includes %w[expired licensed unlicensed], family.standing,
                       "#{family.base} carries an undocumented standing"
       # `list` answers the WHOLE catalogue, so an unlicensed family is a normal
-      # row with no licence type at all. Asserting one either way is what tells a
+      # row with no license type at all. Asserting one either way is what tells a
       # nil apart from a value this client cannot read.
       if family.standing == 'unlicensed'
         assert_nil family.license_type, "#{family.base} is unlicensed and carries a right"
@@ -90,7 +90,7 @@ class DatabaseTest < Minitest::Test
                  "a refusal must be forbidden. If #{UNLICENSED_ID} is now licensed to this " \
                  'organization, point this at one that is not'
     assert_equal 403, error.status
-    refute error.retryable?, 'a licence refusal is not worth retrying'
+    refute error.retryable?, 'a license refusal is not worth retrying'
     # The API says which refusal this is (`{"rc":"NOT_LICENSED"}`). Falling back
     # to the status means the client never read the envelope.
     refute_match(/\Arequest failed with status/, error.message,
