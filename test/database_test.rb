@@ -4,6 +4,8 @@
 # level down, so an unwrap at the wrong depth returns nothing against a healthy
 # API; each test pins the depth.
 
+require 'tmpdir'
+
 require_relative 'test_helper'
 
 class DatabaseTest < Minitest::Test
@@ -180,5 +182,29 @@ class DatabaseTest < Minitest::Test
   def test_an_unpublished_format_is_refused_before_any_request
     assert_raises(ArgumentError) { @client.database.checksums('vpn_ip_extended_v1', 'parquet') }
     assert_raises(ArgumentError) { @client.database.download_url('vpn_ip_extended_v1', 'parquet') }
+  end
+
+  # A transfer takes no per-call timeout and REFUSES one rather than accepting it
+  # and quietly ignoring it: a dataset runs to gigabytes and minutes, so any
+  # bound that suits a JSON call would abandon a healthy download, and a caller
+  # who passed one would be told nothing. The option is simply not in the
+  # signature, so Ruby refuses it for us - this is what stops it being added.
+  def test_a_transfer_refuses_a_per_call_timeout
+    path = File.join(Dir.tmpdir, 'vpndetection-timeout-refusal.mmdb')
+
+    assert_raises(ArgumentError) { @client.database.download('cdn_ip_v1', 'mmdb', path, timeout: 1) }
+    assert_raises(ArgumentError) { @client.database.download_bytes('cdn_ip_v1', 'mmdb', timeout: 1) }
+
+    refute_path_exists path
+  end
+
+  # The other half of the rule above: every call that is NOT a transfer takes the
+  # option. Without this, the refusal test would pass just as well on a surface
+  # that had never been given a per-call timeout at all.
+  def test_every_json_call_takes_a_per_call_timeout
+    %i[list metadata checksums downloads download_url].each do |name|
+      assert_includes @client.database.method(name).parameters, %i[key timeout],
+                      "#{name} must take a per-call timeout"
+    end
   end
 end

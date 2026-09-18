@@ -366,10 +366,18 @@ class ClientTest < Minitest::Test
       lookup: -> { client.lookup('1.1.1.1', timeout: 0.3) },
       lookup_batch: -> { client.lookup_batch(['1.1.1.1'], timeout: 0.3)['1.1.1.1'] },
       oauth_exchange: -> { client.oauth.exchange_device_code('cli', 'mo_dc_x', timeout: 0.3) },
+      database_list: -> { client.database.list(timeout: 0.3) },
+      database_metadata: -> { client.database.metadata('cdn_ip_v1', timeout: 0.3) },
+      database_checksums: -> { client.database.checksums('cdn_ip_v1', 'mmdb', timeout: 0.3) },
+      database_downloads: -> { client.database.downloads(limit: 5, timeout: 0.3) },
+      # Minting a link is an ordinary JSON call, so it takes the bound; the
+      # transfer that link is for is the one that must not.
+      database_download_url: -> { client.database.download_url('cdn_ip_v1', 'mmdb', timeout: 0.3) },
     }
     client_bound = {
       my_entitlement: -> { client.my_entitlement },
       database_list: -> { client.database.list },
+      database_downloads: -> { client.database.downloads(limit: 5) },
       oauth_metadata: -> { client.oauth.metadata },
     }
 

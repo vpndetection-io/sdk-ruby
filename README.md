@@ -160,7 +160,7 @@ client = VPNDetection::Client.new(timeout: 10, retries: 4)
 result = client.lookup('45.83.91.1', timeout: 2, retries: 0)
 ```
 
-`timeout` is in seconds and bounds each attempt, body included, so a call that is retried can take longer in total. It defaults to 30 seconds; before 5.2.0 the default was 10, so pass `timeout: 10` to keep that bound. The client's values are defaults: `lookup`, `lookup_batch`, `my_ip` and `my_entitlement` each take `timeout:` and `retries:` for that call alone, and every `client.oauth` method takes `timeout:`. A database download bounds only its connection with it, because a whole transfer can take minutes.
+`timeout` is in seconds and bounds each attempt, body included, so a call that is retried can take longer in total. It defaults to 30 seconds; before 5.2.0 the default was 10, so pass `timeout: 10` to keep that bound. The client's values are defaults: `lookup`, `lookup_batch`, `my_ip` and `my_entitlement` each take `timeout:` and `retries:` for that call alone, and every `client.oauth` method and every `client.database` call that is not a transfer takes `timeout:` (from 5.3.0). A database download bounds only its connection with it, because a whole transfer can take minutes.
 
 ### Database downloads
 
@@ -176,6 +176,15 @@ bytes = client.database.download_bytes('cdn_ip_v1', 'csvgz')
 ```
 
 `download` streams straight to disk, so nothing bigger than a chunk is ever held in memory whatever the database weighs, and it writes through a neighboring `.part` file so a transfer that dies half way leaves no truncated copy behind. `download_url` hands back the time-limited link and follows nothing, for when you want to run the transfer yourself. `download_bytes` holds the whole file in memory, and the catalog runs from `cdn_ip_v1` at 10 KB to `resproxy_ip_90d_v1` at 1.79 GB, so reach for `download` for anything you have not measured.
+
+From 5.3.0, `list`, `metadata`, `checksums`, `downloads` and `download_url` each take `timeout:` in seconds for that call alone, overriding the client's for one attempt of it:
+
+```ruby
+catalog = client.database.list(timeout: 5)
+sums = client.database.checksums(id, 'mmdb', timeout: 5)
+```
+
+`download` and `download_bytes` deliberately take no `timeout:` and raise `ArgumentError` if handed one, rather than accepting it and quietly doing nothing: a transfer runs to gigabytes and minutes, so any bound that suits a JSON call would abandon a healthy download. `download_url` does take one, because minting the link is an ordinary API request - it bounds that request, not whatever you do with the link afterwards.
 
 ### Sign in with OAuth (device flow)
 

@@ -5,6 +5,12 @@ module VPNDetection
   #
   # Access is granted by contract rather than self-serve, so every method here
   # needs a key carrying the `db.download` scope.
+  #
+  # Every JSON call here takes `timeout:`, in seconds, bounding each ATTEMPT of
+  # that call alone and overriding the bound the client was built with. The two
+  # transfers take none, and are refused it rather than ignoring it: a dataset
+  # runs to gigabytes and minutes, so a bound that suits a JSON call would
+  # abandon a healthy download.
   class DatabaseApi
     def initialize(transport, retries:)
       @transport = transport
@@ -17,13 +23,17 @@ module VPNDetection
     # A license is held against the family, while a download names one version,
     # so the ids {#download}, {#download_bytes}, {#download_url} and {#checksums}
     # take come from each family's `versions`, not from the family itself.
-    def list
-      call { @api.list_databases.databases }
+    #
+    # @param timeout [Numeric, nil] seconds this attempt may take, for THIS call only.
+    def list(timeout: nil)
+      call { @api.list_databases(timeout: timeout).databases }
     end
 
     # What is inside one dataset: schema, samples, row count and sizes.
-    def metadata(id)
-      call { @api.database_metadata(id) }
+    #
+    # @param timeout [Numeric, nil] seconds this attempt may take, for THIS call only.
+    def metadata(id, timeout: nil)
+      call { @api.database_metadata(id, timeout: timeout) }
     end
 
     # The digests for one dataset file.
@@ -31,14 +41,18 @@ module VPNDetection
     # Returns the whole set rather than one algorithm: which digests a dataset
     # publishes is the API's choice, not ours, and the response nests them one
     # level down under `checksums`.
-    def checksums(id, format)
+    #
+    # @param timeout [Numeric, nil] seconds this attempt may take, for THIS call only.
+    def checksums(id, format, timeout: nil)
       check_format!(format)
-      call { @api.database_checksum(id, format).checksums }
+      call { @api.database_checksum(id, format, timeout: timeout).checksums }
     end
 
     # Your organization's recent download attempts, newest first.
-    def downloads(limit: nil)
-      call { @api.list_downloads(limit.nil? ? {} : { limit: limit }).downloads }
+    #
+    # @param timeout [Numeric, nil] seconds this attempt may take, for THIS call only.
+    def downloads(limit: nil, timeout: nil)
+      call { @api.list_downloads(limit: limit, timeout: timeout).downloads }
     end
 
     # The time-limited URL for one dataset file.
@@ -47,9 +61,13 @@ module VPNDetection
     # transfer a file that routinely runs to gigabytes; the link authorizes the
     # START of a transfer, so one already running is not interrupted when it
     # lapses.
-    def download_url(id, format)
+    #
+    # @param timeout [Numeric, nil] seconds this attempt may take, for THIS call
+    #   only. It bounds the request that MINTS the link, which is an ordinary
+    #   JSON call, and says nothing about the transfer you then run with it.
+    def download_url(id, format, timeout: nil)
       check_format!(format)
-      call { redirect_location(id, format) }
+      call { redirect_location(id, format, timeout) }
     end
 
     # Download one dataset file to `path`, and return the bytes written.
@@ -161,8 +179,8 @@ module VPNDetection
     # The 302 is this operation's SUCCESS case, but the generated client treats
     # every non-2xx as a failure, so it arrives as an ApiError carrying the
     # Location header.
-    def redirect_location(id, format)
-      @api.download_database(id, format)
+    def redirect_location(id, format, timeout)
+      @api.download_database(id, format, timeout: timeout)
       raise Error.new(:server_error, 'expected a redirect to object storage')
     rescue ApiError => e
       raise unless e.code == 302
