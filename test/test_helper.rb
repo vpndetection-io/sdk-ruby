@@ -131,9 +131,7 @@ class TestServer
     return if request.nil?
 
     path, request_body = request
-    enter(path)
-    sleep(@delay)
-    status, body, headers, pace = @handler.call(path, request_body)
+    status, body, headers, pace = in_flight(path) { @handler.call(path, request_body) }
     extra = (headers || {}).map { |name, value| "#{name}: #{value}\r\n" }.join
     connection.print(
       "HTTP/1.1 #{status} OK\r\nContent-Type: application/json\r\n#{extra}" \
@@ -141,12 +139,27 @@ class TestServer
     )
     write_body(connection, body, pace)
   ensure
-    leave
     begin
       connection.close
     rescue IOError
       nil
     end
+  end
+
+  # Counts this request as in flight while it is being ANSWERED, ending before
+  # the first response byte goes out. Held any longer the count RACES the hydra:
+  # curl finishes on the last body byte and the next chunk leaves at once, so a
+  # request whose thread had not yet booked itself out is seen alongside the new
+  # one and `peak` reads one too high. Nothing is undercounted either - a client
+  # cannot send its next request before reading the response this releases ahead
+  # of. Pairing the two here also stops a connection that carried no request at
+  # all from decrementing a count it never incremented.
+  def in_flight(path)
+    enter(path)
+    sleep(@delay)
+    yield
+  ensure
+    leave
   end
 
   # The headers are already out, so a stall here is one no bound that stops at
