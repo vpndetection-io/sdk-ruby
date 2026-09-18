@@ -4,6 +4,6 @@ source 'https://rubygems.org'
 
 gemspec
 
-# minitest 6 requires Ruby 3.2, and this gem supports 3.1.
+# minitest 6 is untried here, and the 3.3 floor no longer excludes it.
 gem 'minitest', '~> 5.25'
 gem 'rake', '~> 13.0'

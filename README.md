@@ -19,7 +19,7 @@ Or add it to your Gemfile:
 gem 'vpndetection'
 ```
 
-Requires Ruby 3.1 or newer.
+Requires Ruby 3.3 or newer.
 
 ## Usage
 
