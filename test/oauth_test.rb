@@ -217,6 +217,41 @@ class OauthTest < Minitest::Test
 
   # Against a server that stalls past both bounds, each method's own 0.3 s fires
   # rather than the client's 4 s. The poll's bounds its exchange.
+  # No corpus case: every response there decodes. One member left out per case,
+  # since a body missing several at once passes against a decoder that defaults
+  # any single one of them. The members are listed here, not read from
+  # OauthApi::REQUIRED, or a member dropped there would drop out of this test too.
+  def test_an_answer_missing_any_one_required_member_is_an_ordinary_server_error
+    every = OAUTH['responses'].slice('metadata', 'deviceAuthorization', 'token').values
+                              .map { |cases| cases.first['body'] }.reduce(:merge)
+    calls = {
+      VPNDetection::OauthMetadata => ->(api) { api.metadata },
+      VPNDetection::DeviceAuthorization => ->(api) { api.device_authorization(CLIENT_ID) },
+      VPNDetection::TokenResponse => ->(api) { api.exchange_device_code(CLIENT_ID, 'mo_dc_x') },
+    }
+    required = {
+      VPNDetection::OauthMetadata => %i[issuer authorization_endpoint token_endpoint],
+      VPNDetection::DeviceAuthorization => %i[device_code user_code verification_uri expires_in interval],
+      VPNDetection::TokenResponse => %i[access_token token_type expires_in],
+    }
+    required.each do |type, members|
+      members.each do |member|
+        body = every.reject { |name, _| name == type.attribute_map.fetch(member).to_s }
+        @origin&.stop
+        @origin = OauthOrigin.new([{ 'status' => 200, 'body' => body }])
+        # No retries: a server error is retryable, and a retry would meet the origin's fallback 503.
+        api = VPNDetection::Client.new(base_url: @origin.base_url, timeout: 2, retries: 0).oauth
+
+        kind, error = bounded { calls.fetch(type).call(api) }
+
+        assert_equal :error, kind, "#{type} without #{member}: #{error.inspect}"
+        assert_instance_of VPNDetection::Error, error, "#{type} without #{member}"
+        assert_equal :server_error, error.kind, "#{type} without #{member}"
+        assert_equal 200, error.status, "#{type} without #{member}"
+      end
+    end
+  end
+
   def test_every_oauth_method_takes_a_per_call_timeout
     server = TestServer.new(delay: 8)
     api = VPNDetection::Client.new(base_url: server.base_url, timeout: 4, retries: 0, cache: false).oauth
