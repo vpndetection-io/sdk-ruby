@@ -29,11 +29,17 @@ module VPNDetection
     # @param cache [Boolean] pass false to disable caching.
     # @param cache_ttl [Numeric] how long an answer stays fresh, in seconds.
     # @param concurrency [Integer] batch requests - chunks of up to 1000 addresses - in flight during a batch.
-    # @param retries [Integer] extra attempts for a transient failure.
+    # @param retries [Integer] extra attempts for a transient failure. Each waits
+    #   the server's `Retry-After` when it sent one of at most about 24.8 days,
+    #   and otherwise a backoff of 250 ms that doubles per retry.
     # @param timeout [Numeric] seconds one request may take before it is
-    #   abandoned. Applies per ATTEMPT, so a retried call may take longer in
-    #   total, and every call that takes `retries:` also takes `timeout:` to
-    #   override it. A dataset transfer bounds only its connect phase with it.
+    #   abandoned, 0 for no bound. Applies per ATTEMPT, so a retried call may take
+    #   longer in total, and every call that takes `retries:` also takes
+    #   `timeout:` to override it. A dataset transfer bounds only its connect
+    #   phase with it.
+    # @raise [ArgumentError] for a `timeout`, here or on any call, that is
+    #   negative, not a finite number, or past 2147483.647 seconds (2**31 - 1 ms),
+    #   the longest curl holds.
     # @param transport [Transport, nil] override the HTTP layer, mostly for tests.
     def initialize(api_key: nil, base_url: DEFAULT_BASE_URL, cache: true,
                    cache_max_size: DEFAULT_CACHE_MAX_SIZE, cache_ttl: DEFAULT_CACHE_TTL,
@@ -68,6 +74,8 @@ module VPNDetection
     # @param retries [Integer, nil] extra attempts, for THIS call only.
     # @param timeout [Numeric, nil] seconds each attempt may take, for THIS call only.
     def lookup(ip, retries: nil, timeout: nil)
+      # Here as well as in the transport: a bogon or a cached answer returns before any request.
+      Transport.checked_timeout(timeout) unless timeout.nil?
       return Bogon.result(ip) if Bogon.bogon?(ip)
 
       hit = @cache&.get(ip)
@@ -142,6 +150,7 @@ module VPNDetection
       unless limit.is_a?(Numeric) && limit >= 1
         raise Error.new(:bad_request, "concurrency must be at least 1, not #{limit.inspect}")
       end
+      Transport.checked_timeout(timeout) unless timeout.nil?
 
       addresses = ips.to_a.uniq
       answers = {}

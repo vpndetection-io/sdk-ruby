@@ -9,6 +9,10 @@ module VPNDetection
   module Retries
     BACKOFF_SECONDS = 0.25
 
+    # The longest `Retry-After` honored, in seconds: 2**31 - 1 ms, about 24.8
+    # days, the same bound as the .NET, erlang, perl and php SDKs'.
+    LONGEST_WAIT = 2_147_483.647
+
     module_function
 
     # `retry_if`, when given, is asked after each retryable failure, and a false
@@ -26,10 +30,16 @@ module VPNDetection
       end
     end
 
-    # A server-supplied delay always wins, including a `Retry-After: 0`, which
-    # is the server saying "immediately" rather than saying nothing.
+    # A server-supplied delay wins, including a `Retry-After: 0`, which is the
+    # server saying "immediately" rather than saying nothing. One past
+    # LONGEST_WAIT is waited out on the backoff instead, still rate_limited:
+    # honored, `2147484` held the call for 24.8 days, and `sleep` raised a raw
+    # RangeError for `9223372036854775807` and `1e400`.
     def delay_for(error, attempt)
-      error.retry_after_seconds || BACKOFF_SECONDS * (2**(attempt - 1))
+      asked = error.retry_after_seconds
+      return asked if asked && asked <= LONGEST_WAIT
+
+      BACKOFF_SECONDS * (2**(attempt - 1))
     end
   end
 end

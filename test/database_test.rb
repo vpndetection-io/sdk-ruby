@@ -207,4 +207,53 @@ class DatabaseTest < Minitest::Test
                       "#{name} must take a per-call timeout"
     end
   end
+
+  # Refused where it is set, on the client and per call. Accepted, a negative or
+  # anything past 2147483 s ran with no bound at all, since libcurl refuses the
+  # option and Ethon ignores the refusal, and NaN, Infinity, 2**63 or a string
+  # failed every call with an error from Ruby, FFI or Ethon (measured on 5.4.1).
+  def test_a_timeout_curl_cannot_hold_is_refused_where_it_is_set
+    calls = stub_database('/api/v1/database/list', 200, { 'databases' => [] })
+    [-1, -0.5, Float::NAN, Float::INFINITY, 2_147_484, 2**63, Complex(1, 0), '30', :x, true].each do |value|
+      assert_raises(ArgumentError, "client #{value.inspect}") { VPNDetection::Client.new(timeout: value) }
+      assert_raises(ArgumentError, "per call #{value.inspect}") { @client.database.list(timeout: value) }
+    end
+    assert_empty calls, 'no refused timeout reached the network'
+
+    [0, 0.5, 30, VPNDetection::Transport::LONGEST_TIMEOUT].each do |value|
+      client = VPNDetection::Client.new(api_key: 'test-key', retries: 0, timeout: value)
+      assert_equal [], client.database.list, "client #{value}"
+      assert_equal [], @client.database.list(timeout: value), "per call #{value}"
+    end
+  end
+
+  def test_the_retry_schedule_and_the_longest_retry_after_honored
+    throttle = ->(seconds) { VPNDetection::Error.new(:rate_limited, 'x', status: 429, retry_after_seconds: seconds) }
+    delays = (1..4).map { |attempt| VPNDetection::Retries.delay_for(throttle.call(nil), attempt) }
+
+    assert_equal [0.25, 0.5, 1.0, 2.0], delays, 'the backoff doubles from 250 ms'
+    assert_equal 3.0, VPNDetection::Retries.delay_for(throttle.call(3.0), 4), 'a Retry-After is waited as given'
+    assert_equal 0.0, VPNDetection::Retries.delay_for(throttle.call(0.0), 2), 'and 0 means now'
+    assert_equal 2_147_483.647, VPNDetection::Retries.delay_for(throttle.call(2_147_483.647), 1), 'up to 2**31 - 1 ms'
+    assert_equal 0.25, VPNDetection::Retries.delay_for(throttle.call(2_147_483.648), 1), 'and past it, the backoff'
+  end
+
+  # Honored, 2147484 held the call for 24.8 days, and 9223372036854775807 and
+  # 1e400 raised a raw RangeError out of `sleep` (measured on 5.4.1).
+  def test_a_retry_after_past_the_bound_is_waited_out_on_the_backoff
+    %w[2147484 9223372036854775807 1e400].each do |value|
+      Typhoeus.stub("#{BASE_URL}/api/v1/database/list").and_return(
+        [json_response(429, { 'rc' => 'RATE_LIMITED' }, 'Retry-After' => value),
+         json_response(200, { 'databases' => [] })],
+      )
+      worker = Thread.new { VPNDetection::Client.new(api_key: 'test-key', retries: 1).database.list }
+      worker.report_on_exception = false
+
+      assert worker.join(5), "Retry-After #{value}: the call waited on the header"
+      assert_equal [], worker.value, "Retry-After #{value}: the retry succeeded"
+    ensure
+      worker&.kill
+      Typhoeus::Expectation.clear
+    end
+  end
 end

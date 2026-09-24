@@ -7,7 +7,8 @@ module VPNDetection
   # needs a key carrying the `db.download` scope.
   #
   # Every JSON call here takes `timeout:`, in seconds, bounding each ATTEMPT of
-  # that call alone and overriding the bound the client was built with. The two
+  # that call alone and overriding the bound the client was built with; one the
+  # client would refuse raises ArgumentError before any request. The two
   # transfers take none, and are refused it rather than ignoring it: a dataset
   # runs to gigabytes and minutes, so a bound that suits a JSON call would
   # abandon a healthy download.

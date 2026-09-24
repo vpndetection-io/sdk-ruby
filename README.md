@@ -150,7 +150,7 @@ end
 
 `kind` is one of `:bad_request`, `:unauthorized`, `:forbidden`, `:rate_limited`, `:quota_exceeded`, `:server_error` or `:network`.
 
-Note that `:rate_limited` and `:quota_exceeded` both arrive as HTTP 429 and are not the same thing. A rate limit is when the API faces extreme traffic bursts and so retrying later works; but a spent quota needs your allowance raised or the window to roll over. The library retries rate limits for you, but not if your quota is exceeded.
+Note that `:rate_limited` and `:quota_exceeded` both arrive as HTTP 429 and are not the same thing. A rate limit is when the API faces extreme traffic bursts and so retrying later works; but a spent quota needs your allowance raised or the window to roll over. The library retries rate limits for you, but not if your quota is exceeded. It waits the `Retry-After` the API sent, or its own backoff from 250 ms when that's past about 24.8 days.
 
 ### Timeouts and retries
 
@@ -160,7 +160,7 @@ client = VPNDetection::Client.new(timeout: 10, retries: 4)
 result = client.lookup('45.83.91.1', timeout: 2, retries: 0)
 ```
 
-`timeout` is in seconds and bounds each attempt, body included, so a call that is retried can take longer in total. It defaults to 30 seconds; before 5.2.0 the default was 10, so pass `timeout: 10` to keep that bound. The client's values are defaults: `lookup`, `lookup_batch`, `my_ip` and `my_entitlement` each take `timeout:` and `retries:` for that call alone, and every `client.oauth` method and every `client.database` call that is not a transfer takes `timeout:` (from 5.3.0). A database download bounds only its connection with it, because a whole transfer can take minutes.
+`timeout` is in seconds and bounds each attempt, body included, so a call that is retried can take longer in total. It defaults to 30 seconds, and 0 means no bound; before 5.2.0 the default was 10, so pass `timeout: 10` to keep that bound. The client's values are defaults: `lookup`, `lookup_batch`, `my_ip` and `my_entitlement` each take `timeout:` and `retries:` for that call alone, and every `client.oauth` method and every `client.database` call that is not a transfer takes `timeout:` (from 5.3.0). A database download bounds only its connection with it, because a whole transfer can take minutes. A negative value, anything that isn't a number, and anything past 2147483.647 seconds (the longest curl holds) raise `ArgumentError` where you pass them, before any request.
 
 ### Database downloads
 

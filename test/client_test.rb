@@ -225,6 +225,51 @@ class ClientTest < Minitest::Test
     assert_empty calls
   end
 
+  # Checked before the bogon and the cache, or a bad value would be refused only
+  # when a request happened to be needed (measured on 5.4.1: a bogon, a cached
+  # address and a batch of both took NaN, -1 and '30' without a word).
+  def test_every_lookup_refuses_a_timeout_curl_cannot_hold_before_any_request
+    calls = stub_lookups('8.8.8.8' => { body: OK_BODY.merge('ip' => '8.8.8.8') })
+    client = VPNDetection::Client.new
+    client.lookup('8.8.8.8')
+    calls.clear
+
+    [-1, Float::NAN, 2_147_484, '30'].each do |value|
+      {
+        'a bogon' => -> { client.lookup('10.0.0.1', timeout: value) },
+        'a cached address' => -> { client.lookup('8.8.8.8', timeout: value) },
+        'an address to look up' => -> { client.lookup('9.9.9.9', timeout: value) },
+        'a batch' => -> { client.lookup_batch(['10.0.0.1', '8.8.8.8', '9.9.9.9'], timeout: value) },
+        'a batch answered locally' => -> { client.lookup_batch(['10.0.0.1', '8.8.8.8'], timeout: value) },
+        'my_ip' => -> { client.my_ip(timeout: value) },
+        'my_entitlement' => -> { client.my_entitlement(timeout: value) },
+      }.each do |name, call|
+        assert_raises(ArgumentError, "#{name}, timeout #{value.inspect}") { call.call }
+      end
+    end
+    assert_empty calls, 'no refused timeout reached the network'
+  end
+
+  # A chunk's retry waits on the same bound as a single call's (measured on
+  # 5.4.1: 2147484 held the batch, and 9223372036854775807 and 1e400 raised a
+  # raw RangeError out of `sleep`).
+  def test_a_batch_waits_out_a_retry_after_past_the_bound_on_the_backoff
+    %w[2147484 9223372036854775807 1e400].each do |value|
+      Typhoeus.stub("#{BASE_URL}/batch").and_return(
+        [json_response(429, { 'error' => 'slow down' }, 'Retry-After' => value),
+         json_response(200, { 'results' => { '9.9.9.9' => OK_BODY.merge('ip' => '9.9.9.9') }, 'errors' => {} })],
+      )
+      worker = Thread.new { VPNDetection::Client.new(retries: 1).lookup_batch(['9.9.9.9']) }
+      worker.report_on_exception = false
+
+      assert worker.join(5), "Retry-After #{value}: the batch waited on the header"
+      assert_equal '9.9.9.9', worker.value['9.9.9.9'].ip, "Retry-After #{value}: the retry succeeded"
+    ensure
+      worker&.kill
+      Typhoeus::Expectation.clear
+    end
+  end
+
   def test_the_default_timeout_is_thirty_seconds_per_attempt
     transport = VPNDetection::Client.new.instance_variable_get(:@transport)
 

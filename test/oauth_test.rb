@@ -5,6 +5,8 @@
 # Typhoeus stub answers before curl builds the request, and would prove nothing
 # about what leaves the client.
 
+require 'minitest/mock'
+
 require_relative 'test_helper'
 
 class OauthTest < Minitest::Test
@@ -157,6 +159,47 @@ class OauthTest < Minitest::Test
       assert_equal c['expect']['waits'], clock.waits, "#{c['name']}: waits"
       assert_poll_outcome(c, outcome)
     end
+  end
+
+  # A deadline already behind the clock leaves a negative remainder, which is
+  # never the wait: `sleep` raises ArgumentError for one.
+  def test_a_poll_past_its_deadline_waits_nothing_never_a_negative_time
+    api = keyless([{ 'status' => 400, 'body' => { 'error' => 'authorization_pending' } }]).oauth
+    clock = FakeClock.new.install(api)
+    device = VPNDetection::DeviceAuthorization.build_from_hash(
+      OAUTH['poll']['cases'].first['device'].merge('expires_in' => -3),
+    )
+
+    kind, error = bounded { api.poll_device_token(CLIENT_ID, device) }
+
+    assert_equal [0], clock.waits, 'one wait, of nothing'
+    assert_empty @origin.requests, 'and no request'
+    assert_equal :error, kind
+    assert_instance_of VPNDetection::OauthExpiredTokenError, error
+    assert_nil error.status, 'expired locally'
+  end
+
+  # `sleep` raised RangeError for 2**66 (measured on 5.4.1, a poll whose
+  # expires_in was 2**70), so a wait longer than it takes goes in parts.
+  def test_a_wait_longer_than_ruby_sleeps_is_taken_in_parts
+    api = VPNDetection::Client.new.oauth
+    parts = []
+
+    api.stub(:sleep, ->(seconds) { parts << seconds }) { api.send(:sleep_in_parts, (2**32) + 5) }
+
+    assert_equal [(2**31) - 1, (2**31) - 1, 7], parts
+  end
+
+  # Checked before the first wait, or a bad value would be refused only an
+  # interval later, by the first exchange.
+  def test_the_poll_refuses_a_timeout_before_it_waits
+    api = keyless([]).oauth
+    clock = FakeClock.new.install(api)
+    device = VPNDetection::DeviceAuthorization.build_from_hash(OAUTH['poll']['cases'].first['device'])
+
+    assert_raises(ArgumentError) { api.poll_device_token(CLIENT_ID, device, timeout: -1) }
+    assert_empty clock.waits
+    assert_empty @origin.requests
   end
 
   def test_no_oauth_request_carries_the_api_key

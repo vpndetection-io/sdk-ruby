@@ -17,6 +17,8 @@ module VPNDetection
     TOKEN_PATH = '/oauth/token'
     REVOKE_PATH = '/oauth/revoke'
     DEVICE_CODE_GRANT = 'urn:ietf:params:oauth:grant-type:device_code'
+    # The longest single `sleep` the poll asks Ruby for, in seconds.
+    LONGEST_SLEEP = 2**31 - 1
 
     # The members a 2xx must carry for its type to mean anything.
     REQUIRED = {
@@ -29,7 +31,7 @@ module VPNDetection
       @transport = transport
       @retries = retries
       # The poll's wait and its monotonic clock, which a test replaces together.
-      @wait = ->(seconds) { sleep(seconds) }
+      @wait = ->(seconds) { sleep_in_parts(seconds) }
       @now = -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) }
     end
 
@@ -96,7 +98,8 @@ module VPNDetection
     # Wait for the person to approve a device sign-in, and return its tokens.
     #
     # Waits `device.interval` seconds before EVERY exchange, the first included,
-    # and five seconds longer for good each time the server answers `slow_down`.
+    # and five seconds longer for good each time the server answers `slow_down`,
+    # but never past `device.expires_in`: a wait that would end later ends then.
     # Raises {OauthAccessDeniedError} when the person refuses and
     # {OauthExpiredTokenError} when the code expires, including locally, with no
     # status, once `device.expires_in` seconds have passed since this call. Any
@@ -109,10 +112,14 @@ module VPNDetection
     # @param timeout [Numeric, nil] bounds each exchange, never the whole wait.
     # @return [TokenResponse]
     def poll_device_token(client_id, device, timeout: nil)
+      Transport.checked_timeout(timeout) unless timeout.nil?
       interval = device.interval >= 1 ? device.interval : 5
       deadline = @now.call + device.expires_in
       loop do
-        @wait.call(interval)
+        # A wait that would end past the deadline waits only the time left, never
+        # a negative remainder, and the local expiry below follows with no request.
+        left = deadline - @now.call
+        @wait.call(interval < left ? interval : [left, 0].max)
         raise OauthExpiredTokenError, 'expired_token' if @now.call >= deadline
 
         begin
@@ -128,6 +135,17 @@ module VPNDetection
     end
 
     private
+
+    # `sleep` raises RangeError for a Float from about 9.2e18 s and an Integer
+    # past 2**63 - 1, and a server's `expires_in` can leave a wait longer than
+    # either, so a long one is slept in parts rather than ending the poll.
+    def sleep_in_parts(seconds)
+      while seconds.positive?
+        part = [seconds, LONGEST_SLEEP].min
+        sleep(part)
+        seconds -= part
+      end
+    end
 
     def exchange(form, timeout)
       decode(TokenResponse, @transport.oauth_request(:POST, TOKEN_PATH, form: form, timeout: timeout).run)
