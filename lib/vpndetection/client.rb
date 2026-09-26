@@ -204,8 +204,8 @@ module VPNDetection
 
     private
 
-    # Concurrent misses for one address share ONE request (docs/sdk/contract.md,
-    # UMAN-4645): 5.4.2 sent one per calling thread. The first miss boards the
+    # Concurrent misses for one address share ONE request: 5.4.2 sent one per
+    # calling thread. The first miss boards the
     # address and every miss after it, a batch's included, waits on its Flight.
     class Flight
       def initialize

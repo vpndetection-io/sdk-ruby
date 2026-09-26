@@ -79,8 +79,8 @@ function patch_rails_constant() {
 }
 
 # The generated OAuth class is public by accident and nothing calls it:
-# client.oauth is the surface. Deprecated for the next major to delete
-# (docs/sdk/deprecation.md, the ledger). `category: :deprecated` prints only
+# client.oauth is the surface. Deprecated for the next major to delete.
+# `category: :deprecated` prints only
 # where the caller has turned deprecation warnings on, which is Ruby's contract.
 function deprecate_authorization_api() {
     local api=".gen/lib/vpndetection/api/authorization_wire_api.rb"
