@@ -399,6 +399,89 @@ class ClientTest < Minitest::Test
     assert_raises(VPNDetection::Error) { client.my_entitlement }
   end
 
+  # 5.4.2 sent one request per calling thread: twenty threads looking up one
+  # address were twenty requests. The server holds each answer, so the calls
+  # genuinely overlap.
+  def test_concurrent_misses_for_one_address_share_one_request
+    server = TestServer.new(delay: 0.2)
+    client = VPNDetection::Client.new(base_url: server.base_url)
+
+    results = Array.new(20) { Thread.new { client.lookup('9.9.9.1') } }.map(&:value)
+
+    assert_equal ['/9.9.9.1'], server.paths, 'twenty concurrent lookups of one address send one request'
+    assert_equal 20, results.count { |r| r.ip == '9.9.9.1' }, 'and every caller gets its answer'
+  ensure
+    server&.stop
+  end
+
+  def test_a_batch_and_a_lookup_share_an_address_in_flight_both_ways
+    batches = []
+    server = TestServer.new(delay: 0.2) do |path, body|
+      if path == '/batch'
+        batches << JSON.parse(body).fetch('ips').sort
+        [200, TestServer.batch_body(body)]
+      else
+        [200, JSON.generate({ 'ip' => path[1..], 'is_vpn' => false })]
+      end
+    end
+    client = VPNDetection::Client.new(base_url: server.base_url)
+
+    single = Thread.new { client.lookup('9.9.9.2') }
+    sleep 0.05
+    batch = client.lookup_batch(['9.9.9.2', '9.9.9.3'])
+    assert_equal ['/9.9.9.2', '/batch'], server.paths.sort, 'the lookup and the batch each sent once'
+    assert_equal [['9.9.9.3']], batches, 'the batch left out the address the lookup was fetching'
+    assert_same single.value, batch['9.9.9.2'], "and took the lookup's answer for it"
+
+    first = Thread.new { client.lookup_batch(['9.9.9.4', '9.9.9.5']) }
+    sleep 0.05
+    late = client.lookup('9.9.9.5')
+    assert_equal 1, server.paths.count('/batch') - 1, 'a lookup of an address a batch is fetching sends nothing'
+    assert_equal 3, server.paths.size
+    assert_same first.value['9.9.9.5'], late, "and takes the batch's answer"
+  ensure
+    server&.stop
+  end
+
+  # A failure reaches every waiter and is cached for none; a leader that never
+  # finishes leaves its waiters to ask again; and a client without a cache,
+  # where every lookup is served, shares nothing.
+  def test_a_shared_request_fails_every_waiter_and_a_dead_leader_fails_none
+    server = TestServer.new(delay: 0.2) do |path, _body|
+      path == '/9.9.9.9' ? [500, JSON.generate({ 'error' => 'boom' })] : [200, JSON.generate({ 'ip' => path[1..], 'is_vpn' => false })]
+    end
+    client = VPNDetection::Client.new(base_url: server.base_url, retries: 0)
+
+    outcomes = Array.new(5) do
+      Thread.new do
+        client.lookup('9.9.9.9')
+        :returned
+      rescue VPNDetection::Error => e
+        e
+      end
+    end.map(&:value)
+    assert_equal ['/9.9.9.9'], server.paths, 'five concurrent lookups of a failing address send one request'
+    assert_equal 5, outcomes.count { |o| o.is_a?(VPNDetection::Error) && o.kind == :server_error },
+                 'and all five raise its error'
+    assert_raises(VPNDetection::Error) { client.lookup('9.9.9.9') }
+    assert_equal 2, server.paths.size, 'the failure was not cached'
+
+    leader = Thread.new { client.lookup('9.9.9.7') }
+    sleep 0.05
+    waiter = Thread.new { client.lookup('9.9.9.7') }
+    sleep 0.05
+    leader.kill
+    assert waiter.join(5), 'a waiter whose leader died was left waiting'
+    assert_equal '9.9.9.7', waiter.value.ip, 'a waiter whose leader died asks again'
+    assert_equal 2, server.paths.count('/9.9.9.7')
+
+    uncached = VPNDetection::Client.new(base_url: server.base_url, cache: false)
+    Array.new(5) { Thread.new { uncached.lookup('9.9.9.6') } }.each(&:join)
+    assert_equal 5, server.paths.count('/9.9.9.6'), 'a client with no cache shares nothing'
+  ensure
+    server&.stop
+  end
+
   private
 
   # Each call's per-call bound (0.3 s) fires first, then a call with no override

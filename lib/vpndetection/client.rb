@@ -49,6 +49,9 @@ module VPNDetection
         Transport::Config.new(api_key: api_key, base_url: base_url, timeout: timeout),
       )
       @cache = cache ? Cache.new(max_size: cache_max_size, ttl: cache_ttl) : nil
+      # The addresses with a request in flight, each a Flight its waiters block on.
+      @flights = {}
+      @flights_lock = Mutex.new
       @concurrency = concurrency
       @retries = retries
       @database = DatabaseApi.new(@transport, retries: retries)
@@ -78,14 +81,26 @@ module VPNDetection
       Transport.checked_timeout(timeout) unless timeout.nil?
       return Bogon.result(ip) if Bogon.bogon?(ip)
 
-      hit = @cache&.get(ip)
-      return hit unless hit.nil?
+      loop do
+        hit = @cache&.get(ip)
+        return hit unless hit.nil?
 
-      result = Retries.with_retries(retries || @retries) do
-        Transport.lookup_result(@transport.lookup_request(ip, timeout: timeout).run)
+        flight, leader = board(ip)
+        return fetch(ip, retries, timeout) if flight.nil?
+
+        if leader
+          # Read once more now the address is boarded: a leader that landed
+          # between the miss above and boarding has already cached its answer.
+          hit = @cache.get(ip)
+          return unboard(ip, flight, :served, hit) unless hit.nil?
+
+          return lead(ip, flight) { fetch(ip, retries, timeout) }
+        end
+        state, value = flight.wait
+        return value if state == :served
+        raise value if state == :failed
+        # :abandoned - its leader never finished, so this caller asks again.
       end
-      @cache&.set(ip, result)
-      result
     end
 
     # Classify the address this client is calling from.
@@ -160,9 +175,27 @@ module VPNDetection
         hit = Bogon.bogon?(ip) ? Bogon.result(ip) : @cache&.get(ip)
         hit.nil? ? pending << ip : answers[ip] = hit
       end
-      unless pending.empty?
-        run_batch(pending.each_slice(BATCH_MAX).to_a, answers, limit, retries || @retries, timeout)
+      # Boarded before any chunk is built, so a lookup arriving meanwhile waits
+      # for this batch; an address already in flight is not sent again.
+      boarded = {}
+      joined = {}
+      pending.each do |ip|
+        flight, leader = board(ip)
+        if leader == false
+          joined[ip] = flight
+        else
+          boarded[ip] = flight
+        end
       end
+      begin
+        unless boarded.empty?
+          chunks = boarded.keys.each_slice(BATCH_MAX).to_a
+          run_batch(chunks, answers, limit, retries || @retries, timeout, boarded)
+        end
+      ensure
+        boarded.each { |ip, flight| unboard(ip, flight, :abandoned) unless flight.nil? }
+      end
+      joined.each { |ip, flight| answers[ip] = joined_answer(ip, flight, retries, timeout) }
 
       # Reinstated in input order: a hydra settles in completion order, and a
       # caller iterating the hash should see what they passed in.
@@ -171,11 +204,83 @@ module VPNDetection
 
     private
 
+    # Concurrent misses for one address share ONE request (docs/sdk/contract.md,
+    # UMAN-4645): 5.4.2 sent one per calling thread. The first miss boards the
+    # address and every miss after it, a batch's included, waits on its Flight.
+    class Flight
+      def initialize
+        @lock = Mutex.new
+        @landed = ConditionVariable.new
+        @state = :pending
+      end
+
+      # Settles the flight once, for every waiter: :served with a Result,
+      # :failed with an Error, or :abandoned when its leader never finished.
+      def land(state, value = nil)
+        @lock.synchronize do
+          next unless @state == :pending
+
+          @state = state
+          @value = value
+          @landed.broadcast
+        end
+      end
+
+      # Blocks until the flight lands, then [state, value].
+      def wait
+        @lock.synchronize do
+          @landed.wait(@lock) while @state == :pending
+          [@state, @value]
+        end
+      end
+    end
+
+    # [flight, true] when this caller leads the request for `ip`, [flight,
+    # false] when one is already in flight, and nil without a cache: every
+    # lookup is then served, so nothing is shared.
+    def board(ip)
+      return nil if @cache.nil?
+
+      @flights_lock.synchronize do
+        existing = @flights[ip]
+        existing ? [existing, false] : [@flights[ip] = Flight.new, true]
+      end
+    end
+
+    # Takes `ip` off the board and lands its flight. Returns `value`.
+    def unboard(ip, flight, state, value = nil)
+      @flights_lock.synchronize { @flights.delete(ip) if @flights[ip].equal?(flight) }
+      flight.land(state, value)
+      value
+    end
+
+    # Runs the request a flight is waiting on, under the options of the call
+    # that leads it. A served answer is cached before it lands; a failure
+    # reaches every waiter and is cached for none; and a leader that never
+    # finishes - a killed thread, a Timeout.timeout - abandons the flight, so
+    # its waiters ask again rather than failing with it.
+    def lead(ip, flight)
+      unboard(ip, flight, :served, yield)
+    rescue Error => e
+      unboard(ip, flight, :failed, e)
+      raise
+    ensure
+      unboard(ip, flight, :abandoned)
+    end
+
+    def fetch(ip, retries, timeout)
+      result = Retries.with_retries(retries || @retries) do
+        Transport.lookup_result(@transport.lookup_request(ip, timeout: timeout).run)
+      end
+      @cache&.set(ip, result)
+      result
+    end
+
     # One hydra per call, sized for THIS call. Reusing an instance-level hydra
     # would silently cap a per-call concurrency at the client's setting, and
     # would not be safe to drive from two threads either. Each request is one
     # chunk of up to 1000 addresses.
-    def run_batch(chunks, answers, concurrency, retries, timeout)
+    def run_batch(chunks, answers, concurrency, retries, timeout, boarded)
       hydra = Typhoeus::Hydra.new(max_concurrency: concurrency)
       attempts = Hash.new(0)
 
@@ -183,7 +288,11 @@ module VPNDetection
         request = @transport.batch_request(chunk, timeout: timeout)
         request.on_complete do |response|
           outcome = settle(chunk, response, attempts, retries, enqueue)
-          answers.merge!(outcome) unless outcome.nil?
+          outcome&.each do |ip, answer|
+            answers[ip] = answer
+            flight = boarded[ip]
+            unboard(ip, flight, answer.is_a?(Result) ? :served : :failed, answer) unless flight.nil?
+          end
         end
         hydra.queue(request)
       end
@@ -212,6 +321,17 @@ module VPNDetection
       sleep(Retries.delay_for(e, attempts[chunk]))
       enqueue.call(chunk)
       nil
+    end
+
+    # What a batch takes for an address another call was fetching: that call's
+    # answer or error, or, when its leader never finished, its own lookup.
+    def joined_answer(ip, flight, retries, timeout)
+      state, value = flight.wait
+      return value unless state == :abandoned
+
+      lookup(ip, retries: retries, timeout: timeout)
+    rescue Error => e
+      e
     end
 
     # Every address lands in exactly one of `results` and `errors`; an address in
