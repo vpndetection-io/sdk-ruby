@@ -1,4 +1,4 @@
-# [<img src="https://s3.vpndetection.io/vpndetection-public/brand/mark.svg" alt="VPNDetection" width="24"/>](https://vpndetection.io/) VPNDetection Ruby Client Library
+# [<img src="https://s3.vpndetection.io/vpndetection-public/brand/mark.svg" alt="VPNDetection" height="28"/>](https://vpndetection.io/) VPNDetection Ruby Client Library
 
 [![gem](https://img.shields.io/gem/v/vpndetection.svg)](https://rubygems.org/gems/vpndetection)
 [![license](https://img.shields.io/github/license/vpndetection-io/sdk-ruby.svg)](LICENSE)
