@@ -14,9 +14,6 @@ class OauthTest < Minitest::Test
 
   OAUTH = TestHelper::CORPUS['oauth']
   CLIENT_ID = 'vpndetection-cli'
-  # The corpus's metadata document still carries a member the published spec
-  # dropped, so the generated model has no reader for it.
-  NOT_IN_SPEC = %w[client_id_metadata_document_supported].freeze
   ERROR_CLASSES = {
     'oauth' => VPNDetection::OauthRequestError,
     'accessDenied' => VPNDetection::OauthAccessDeniedError,
@@ -78,8 +75,6 @@ class OauthTest < Minitest::Test
 
         assert_equal :ok, kind, "#{c['name']}: #{value.inspect}"
         c['expect']['present'].each do |member, expected|
-          next if NOT_IN_SPEC.include?(member)
-
           assert_equal expected, value.public_send(member), "#{c['name']}: #{member}"
         end
         c['expect']['absent'].each do |member|
