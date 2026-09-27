@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.5.0 - 2026-09-27
+
+### Features
+
+- Re-pin the spec to 2026.09.26, adding client_id_metadata_document_supported ([`4d89157`](https://github.com/vpndetection-io/sdk-ruby/commit/4d89157da0770f8d1c4cca571c3309e247147e5e))
+
 ## 5.4.3 - 2026-09-26
 
 ### Fixes
