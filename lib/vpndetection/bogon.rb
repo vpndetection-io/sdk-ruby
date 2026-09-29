@@ -16,10 +16,19 @@ module VPNDetection
       addr = parse(ip)
       return false if addr.nil?
 
-      # An IPv4-mapped address stays in the v6 table, which is where the
-      # canonical ranges put ::ffff:0:0/96. Unmapping it first would match it
-      # against the v4 table and disagree with every other SDK.
+      addr = addr.native if addr.ipv4_mapped?
       (addr.ipv4? ? v4 : v6).any? { |range| range.include?(addr) }
+    end
+
+    # The IPv4 address an IPv4-mapped IPv6 address (::ffff:a.b.c.d, in any
+    # spelling) carries, dotted, and any other address as given. A server
+    # listening on :: sees every IPv4 visitor in that form, which read whole is
+    # inside ::ffff:0:0/96, so judging it whole would answer every such visitor
+    # locally as a bogon. ::a.b.c.d is IPv4-compatible rather than mapped, and
+    # stays IPv6: IPAddr#native alone would unwrap that too.
+    def unmapped(ip)
+      addr = ip.to_s.include?(':') ? parse(ip) : nil
+      addr&.ipv4_mapped? ? addr.native.to_s : ip
     end
 
     # The answer a bogon gets, in the full shape the API serves at its widest

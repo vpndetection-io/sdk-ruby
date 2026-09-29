@@ -28,6 +28,46 @@ class ConformanceTest < Minitest::Test
     end
   end
 
+  # A server listening on :: sees every IPv4 visitor as ::ffff:a.b.c.d. Read
+  # whole that is inside ::ffff:0:0/96, so an SDK that did not unmap answered
+  # each one locally as a bogon and never asked.
+  def test_an_ipv4_mapped_address_is_the_ipv4_address_it_carries
+    CORPUS['ipv4Mapped'].each do |c|
+      ip = c['ip']
+      carries = c['carries']
+      assert_equal c['expect'], VPNDetection.bogon?(ip), "#{ip}: bogon? (#{c['why']})"
+
+      Typhoeus::Expectation.clear
+      routes = { carries => { body: { 'ip' => carries, 'is_vpn' => true } } }
+      calls = stub_lookups(routes)
+      client = VPNDetection::Client.new
+      result = client.lookup(ip)
+      assert_equal carries, result.ip, "#{ip}: the answer names #{carries}"
+      if c['expect']
+        assert result.bogon?, "#{ip}: answered locally"
+        assert_empty calls, "#{ip}: with no request"
+        next
+      end
+      assert_equal ["#{BASE_URL}/#{carries}"], calls, "#{ip}: sent as #{carries}"
+      client.lookup(carries)
+      assert_equal 1, calls.length, "#{ip}: a lookup of #{carries} is then a cache hit"
+
+      # The mapped form alone: asked beside its plain form, a batch that sent
+      # the address as given would still have been answered for the plain one.
+      Typhoeus::Expectation.clear
+      sent = []
+      Typhoeus.stub("#{BASE_URL}/batch").and_return do |request|
+        sent.concat(JSON.parse(request.options[:body].to_s).fetch('ips', []))
+        batch_response(routes, request.options[:body])
+      end
+      answers = VPNDetection::Client.new(retries: 0).lookup_batch([ip])
+      assert_equal [ip], answers.keys, "#{ip}: a batch keys the answer as asked"
+      answer = answers[ip]
+      assert_equal carries, (answer.respond_to?(:ip) ? answer.ip : nil), "#{ip}: and answers it as #{carries}"
+      assert_equal [carries], sent, "#{ip}: the batch sent #{carries} alone"
+    end
+  end
+
   def test_a_bogon_is_answered_locally_in_the_full_max_shape
     calls = stub_lookups({})
     result = VPNDetection::Client.new.lookup('10.0.0.1')

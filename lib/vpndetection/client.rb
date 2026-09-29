@@ -79,6 +79,8 @@ module VPNDetection
     def lookup(ip, retries: nil, timeout: nil)
       # Here as well as in the transport: a bogon or a cached answer returns before any request.
       Transport.checked_timeout(timeout) unless timeout.nil?
+      # Judged, cached and sent as the IPv4 address it carries, if it is mapped.
+      ip = Bogon.unmapped(ip)
       return Bogon.result(ip) if Bogon.bogon?(ip)
 
       loop do
@@ -167,7 +169,10 @@ module VPNDetection
       end
       Transport.checked_timeout(timeout) unless timeout.nil?
 
-      addresses = ips.to_a.uniq
+      # An IPv4-mapped address is sent as the address it carries, once however
+      # many of its spellings were asked, and answered under each one asked.
+      asked = ips.to_a.uniq
+      addresses = asked.map { |ip| Bogon.unmapped(ip) }.uniq
       answers = {}
       pending = []
 
@@ -199,7 +204,7 @@ module VPNDetection
 
       # Reinstated in input order: a hydra settles in completion order, and a
       # caller iterating the hash should see what they passed in.
-      addresses.to_h { |ip| [ip, answers[ip]] }
+      asked.to_h { |ip| [ip, answers[Bogon.unmapped(ip)]] }
     end
 
     private
