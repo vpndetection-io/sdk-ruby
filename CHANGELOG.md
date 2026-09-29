@@ -2,6 +2,13 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.5.1 - 2026-09-29
+
+### Fixes
+
+- Judge an IPv4-mapped address as the IPv4 address it carries ([`7b4582d`](https://github.com/vpndetection-io/sdk-ruby/commit/7b4582d520904c38897c401e1bcba73b2817159f))
+- Recognize 26 more reserved ranges as bogons, as the API does ([`1cb81f0`](https://github.com/vpndetection-io/sdk-ruby/commit/1cb81f00ecccfd96fb5085b6ab984a2c10db6342))
+
 ## 5.5.0 - 2026-09-27
 
 ### Features
