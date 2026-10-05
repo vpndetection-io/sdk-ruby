@@ -46,7 +46,7 @@ class OauthTest < Minitest::Test
   end
 
   def test_every_form_leaves_encoded_exactly_as_the_corpus_says
-    OAUTH['forms']['cases'].each do |c|
+    (OAUTH['forms']['cases'] + OAUTH['deferred']['forms']).each do |c|
       api = keyless([success_for(c['endpoint'])]).oauth
 
       outcome = bounded { call(api, c['operation'], c['args']) }
@@ -119,7 +119,7 @@ class OauthTest < Minitest::Test
   # otherwise pick up the origin's fallback 503 and fail on the error's type,
   # which is the wrong reason.
   def test_only_the_idempotent_operations_retry
-    OAUTH['retries']['cases'].each do |c|
+    (OAUTH['retries']['cases'] + OAUTH['deferred']['retries']).each do |c|
       @origin&.stop
       @origin = OauthOrigin.new(c['responses'])
       api = VPNDetection::Client.new(base_url: @origin.base_url, timeout: 2, cache: false).oauth
@@ -197,11 +197,46 @@ class OauthTest < Minitest::Test
     assert_empty @origin.requests
   end
 
+  def test_an_authorization_url_is_built_exactly_as_the_corpus_spells_it
+    OAUTH['deferred']['authorizationUrl'].each do |c|
+      api = VPNDetection::Client.new(base_url: c['baseUrl']).oauth
+      url = api.authorization_url(c['clientId'], c['redirectUri'], c['codeChallenge'],
+                                  scope: c['scope'], state: c['state'], resource: c['resource'])
+
+      assert_equal c['expect'], url, c['name']
+    end
+  end
+
+  def test_an_authorization_url_leaves_out_an_empty_option_and_refuses_an_empty_value
+    c = OAUTH['deferred']['authorizationUrl'].first
+    api = VPNDetection::Client.new(base_url: c['baseUrl']).oauth
+
+    url = api.authorization_url(c['clientId'], c['redirectUri'], c['codeChallenge'], scope: '', state: '', resource: '')
+
+    assert_equal c['expect'], url
+    assert_raises(ArgumentError) { api.authorization_url('', c['redirectUri'], c['codeChallenge']) }
+    assert_raises(ArgumentError) { api.authorization_url(c['clientId'], c['redirectUri'], "\xFF") }
+  end
+
+  def test_a_pkce_pair_is_fresh_and_its_challenge_is_the_s256_one
+    pkce = OAUTH['deferred']['pkce']
+    api = VPNDetection::Client.new.oauth
+
+    first = api.create_pkce
+
+    assert_equal pkce['challenge'], api.pkce_challenge(pkce['verifier'])
+    assert_match(/#{pkce['generatedVerifierPattern']}/o, first.verifier)
+    assert_equal api.pkce_challenge(first.verifier), first.challenge
+    assert_equal pkce['method'], first.code_challenge_method
+    refute_equal first.verifier, api.create_pkce.verifier, 'two pairs share a verifier'
+    refute_includes first.inspect, first.verifier
+  end
+
   def test_no_oauth_request_carries_the_api_key
     rule = OAUTH['noCredential']
     token = success_for('token')
     @origin = OauthOrigin.new([success_for('metadata'), success_for('deviceAuthorization'), token, token,
-                               success_for('revoke'), token])
+                               token, success_for('revoke'), token])
     client = VPNDetection::Client.new(api_key: rule['apiKey'], base_url: @origin.base_url, timeout: 2,
                                       cache: false)
     api = client.oauth
@@ -213,6 +248,7 @@ class OauthTest < Minitest::Test
         device = api.device_authorization(CLIENT_ID, scope: 'account.read')
         api.exchange_device_code(CLIENT_ID, 'mo_dc_x')
         api.exchange_refresh_token(CLIENT_ID, 'mo_rt_x')
+        api.exchange_authorization_code(CLIENT_ID, 'mo_ac_x', 'v' * 43, 'http://127.0.0.1/cb')
         api.revoke(CLIENT_ID, 'mo_rt_x')
         api.poll_device_token(CLIENT_ID, device)
       end
@@ -221,7 +257,9 @@ class OauthTest < Minitest::Test
     assert_equal :ok, outcome.first, outcome.last.inspect
     refute_match(/deprecated/, printed, 'the accessor went through a deprecated class')
     seen = @origin.requests
-    assert_equal 6, seen.length
+    assert_equal 7, seen.length
+    url = api.authorization_url(CLIENT_ID, 'http://127.0.0.1/cb', 'c' * 43)
+    refute_includes url, rule['apiKey'], 'the authorization URL carried the API key'
     seen.each do |request|
       rule['forbiddenHeaders'].each do |name|
         refute request.headers.key?(name), "#{request.path} carried #{name}"
@@ -338,6 +376,8 @@ class OauthTest < Minitest::Test
       api.device_authorization(args['clientId'], scope: args['scope'], resource: args['resource'])
     when 'exchangeDeviceCode' then api.exchange_device_code(args['clientId'], args['deviceCode'])
     when 'exchangeRefreshToken' then api.exchange_refresh_token(args['clientId'], args['refreshToken'])
+    when 'exchangeAuthorizationCode'
+      api.exchange_authorization_code(args['clientId'], args['code'], args['codeVerifier'], args['redirectUri'])
     when 'revoke' then api.revoke(args['clientId'], args['token'])
     else raise ArgumentError, "the corpus names an operation this suite does not know: #{operation}"
     end

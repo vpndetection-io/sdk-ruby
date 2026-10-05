@@ -1,6 +1,21 @@
 # frozen_string_literal: true
 
+require 'digest'
+require 'securerandom'
+
 module VPNDetection
+  # One sign-in's PKCE pair: `challenge` goes in the authorization URL, and
+  # `verifier` to {OauthApi#exchange_authorization_code}.
+  # `code_challenge_method` is always `S256`, the only method the server
+  # accepts; a reader called `method` would hide Object#method. The verifier is
+  # left out of `inspect`, so logging the pair does not leak it.
+  Pkce = Data.define(:verifier, :challenge, :code_challenge_method) do
+    def inspect
+      "#<data VPNDetection::Pkce challenge=#{challenge.inspect} code_challenge_method=#{code_challenge_method.inspect}>"
+    end
+    alias_method :to_s, :inspect
+  end
+
   # Signing a person in with OAuth, reached as `client.oauth`.
   #
   # A program on the person's own machine starts a device sign-in, shows them a
@@ -9,13 +24,18 @@ module VPNDetection
   # client ID works; they are issued on request from support@vpndetection.io.
   #
   # No request made here carries the API key this client was built with, and a
-  # client built without one works exactly the same. Every method takes
-  # `timeout:`, seconds per attempt, for that call alone.
+  # client built without one works exactly the same. Every method that makes a
+  # request takes `timeout:`, seconds per attempt, for that call alone.
+  #
+  # An app that can take a browser redirect signs the person in with the
+  # authorization code flow instead: {#authorization_url} with a {#create_pkce}
+  # pair, then {#exchange_authorization_code}.
   class OauthApi
     METADATA_PATH = '/.well-known/oauth-authorization-server'
     DEVICE_AUTHORIZATION_PATH = '/oauth/device_authorization'
     TOKEN_PATH = '/oauth/token'
     REVOKE_PATH = '/oauth/revoke'
+    AUTHORIZE_PATH = '/oauth/authorize'
     DEVICE_CODE_GRANT = 'urn:ietf:params:oauth:grant-type:device_code'
     # The longest single `sleep` the poll asks Ruby for, in seconds.
     LONGEST_SLEEP = 2**31 - 1
@@ -82,6 +102,55 @@ module VPNDetection
       exchange(form, timeout)
     end
 
+    # Exchange the `code` a sign-in's redirect brought back for tokens.
+    # `code_verifier` is the PKCE verifier whose challenge went into the
+    # authorization URL, and `redirect_uri` that URL's, exactly.
+    #
+    # Never retried: the server spends the code on first read, before it checks
+    # the verifier, so a retry could only be refused.
+    #
+    # @return [TokenResponse]
+    def exchange_authorization_code(client_id, code, code_verifier, redirect_uri, timeout: nil)
+      form = {
+        'grant_type' => 'authorization_code', 'code' => code, 'redirect_uri' => redirect_uri,
+        'client_id' => client_id, 'code_verifier' => code_verifier
+      }
+      exchange(form, timeout)
+    end
+
+    # The URL to open in the person's browser for the authorization code flow.
+    # Makes no request. Once they decide, the server redirects to `redirect_uri`
+    # with a `code` for {#exchange_authorization_code} (and `state`, when one was
+    # given), or with an `error`. An option given empty is left out; a required
+    # value that is empty or not UTF-8 raises ArgumentError.
+    #
+    # @return [String]
+    def authorization_url(client_id, redirect_uri, code_challenge, scope: nil, state: nil, resource: nil)
+      required = { 'client_id' => client_id, 'redirect_uri' => redirect_uri, 'code_challenge' => code_challenge }
+      required.each do |name, value|
+        raise ArgumentError, "#{name} must be a non-empty String" unless value.is_a?(String) && !value.empty?
+      end
+      optional = { 'scope' => scope, 'state' => state, 'resource' => resource }.reject { |_, v| v.nil? || v.empty? }
+      params = { 'response_type' => 'code', **required, 'code_challenge_method' => 'S256', **optional }
+      query = params.map { |name, value| "#{name}=#{percent_encode(name, value)}" }.join('&')
+      "#{@transport.config.base_url}#{AUTHORIZE_PATH}?#{query}"
+    end
+
+    # A fresh PKCE pair for one sign-in, from 32 bytes of SecureRandom.
+    #
+    # @return [Pkce]
+    def create_pkce
+      verifier = SecureRandom.urlsafe_base64(32)
+      Pkce.new(verifier: verifier, challenge: pkce_challenge(verifier), code_challenge_method: 'S256')
+    end
+
+    # The `S256` challenge for a PKCE verifier: its SHA-256, as unpadded base64url.
+    #
+    # @return [String]
+    def pkce_challenge(verifier)
+      [Digest::SHA256.digest(verifier)].pack('m0').tr('+/', '-_').delete('=')
+    end
+
     # Revoke an access or refresh token. A refresh token ends the whole grant and
     # every token it issued, which is how a machine signs out.
     #
@@ -145,6 +214,16 @@ module VPNDetection
         sleep(part)
         seconds -= part
       end
+    end
+
+    # Every byte of the UTF-8 but A-Z a-z 0-9 - . _ ~ as %XX, so a space is %20
+    # and never +.
+    def percent_encode(name, value)
+      raise ArgumentError, "#{name} is not valid UTF-8" unless value.encode(Encoding::UTF_8).valid_encoding?
+
+      value.encode(Encoding::UTF_8).b.gsub(/[^A-Za-z0-9\-._~]/n) { |byte| format('%%%02X', byte.ord) }
+    rescue EncodingError
+      raise ArgumentError, "#{name} is not valid UTF-8"
     end
 
     def exchange(form, timeout)
