@@ -80,6 +80,24 @@ module VPNDetection
       request
     end
 
+    # A 2xx the generated client cannot read as the answer it promises is the
+    # server's fault, and a retryable :server_error, as it is on the OAuth calls:
+    # a proxy's HTML page, a cut-off or empty body, or an object missing a member
+    # the spec requires. The generated reader raised a RuntimeError, a
+    # JSON::ParserError or an ArgumentError for those, none of them retried, and
+    # handed an empty or non-object body back as nil, as if it were the answer.
+    def deserialize(response, return_type)
+      data = super
+      return data unless data.nil?
+
+      raise Error.new(:server_error, "the API answered with no #{return_type}", status: response.code)
+    rescue Error
+      raise
+    rescue StandardError => e
+      raise Error.new(:server_error, "could not read the answer as #{return_type}: #{e.message}",
+                      status: response.code)
+    end
+
     # A GET for the presigned link the download endpoint hands out.
     #
     # Built here rather than through {#build_request} so it carries NO

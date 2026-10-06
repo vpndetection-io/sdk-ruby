@@ -256,4 +256,41 @@ class DatabaseTest < Minitest::Test
       Typhoeus::Expectation.clear
     end
   end
+
+  # Through 5.6.0 a proxy's HTML page raised a RuntimeError, a cut-off body a
+  # JSON::ParserError and a missing required member an ArgumentError, none of them
+  # retried, and an empty or non-object body came back nil as if it were the answer.
+  def test_a_2xx_that_is_not_its_answer_is_a_server_error
+    bodies = {
+      'an HTML page' => ['<html>gateway</html>', { 'Content-Type' => 'text/html' }],
+      'a cut-off body' => ['{"databases":[', {}],
+      'an empty body' => ['', {}],
+      'an array' => ['[]', {}],
+      'an object with no member it requires' => ['{}', {}],
+    }
+    calls = {
+      '/api/v1/database/list' => -> { @client.database.list },
+      '/api/v1/database/metadata' => -> { @client.database.metadata('vpn_ip_extended_v1') },
+      '/api/v1/database/checksum' => -> { @client.database.checksums('vpn_ip_extended_v1', 'csvgz') },
+      '/api/v1/database/downloads' => -> { @client.database.downloads },
+    }
+    bodies.each do |name, (body, headers)|
+      calls.each do |path, call|
+        stub_database(path, 200, body, headers)
+        error = assert_raises(VPNDetection::Error, "#{path}, #{name}") { call.call }
+
+        assert_equal :server_error, error.kind, "#{path}, #{name}: #{error.message}"
+        assert_equal 200, error.status, "#{path}, #{name}"
+      ensure
+        Typhoeus::Expectation.clear
+      end
+    end
+  end
+
+  def test_a_2xx_that_is_not_its_answer_is_retried
+    calls = stub_database('/api/v1/database/list', 200, '<html>gateway</html>', 'Content-Type' => 'text/html')
+
+    assert_raises(VPNDetection::Error) { VPNDetection::Client.new(api_key: 'test-key', retries: 1).database.list }
+    assert_equal 2, calls.length
+  end
 end
