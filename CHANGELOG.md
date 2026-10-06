@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.6.1 - 2026-10-06
+
+### Fixes
+
+- Raise a 2xx that is not its answer as a retried server_error ([`431e0df`](https://github.com/vpndetection-io/sdk-ruby/commit/431e0df37f9c2b1ab738905fe6406072f73784b1))
+
 ## 5.6.0 - 2026-10-05
 
 ### Features
