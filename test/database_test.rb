@@ -251,9 +251,10 @@ class DatabaseTest < Minitest::Test
   end
 
   # Honored, 2147484 held the call for 24.8 days, and 9223372036854775807 and
-  # 1e400 raised a raw RangeError out of `sleep` (measured on 5.4.1).
+  # 1e400 raised a raw RangeError out of `sleep` (measured on 5.4.1). 1e400 is
+  # not seconds from 5.6.2, so 401 digits stand in for it.
   def test_a_retry_after_past_the_bound_is_waited_out_on_the_backoff
-    %w[2147484 9223372036854775807 1e400].each do |value|
+    ['2147484', '9223372036854775807', '1' + ('0' * 400)].each do |value|
       Typhoeus.stub("#{BASE_URL}/api/v1/database/list").and_return(
         [json_response(429, { 'rc' => 'RATE_LIMITED' }, 'Retry-After' => value),
          json_response(200, { 'databases' => [] })],

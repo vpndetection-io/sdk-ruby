@@ -193,6 +193,27 @@ class ClientTest < Minitest::Test
     assert_equal 1, sent, 'one unreadable entry does not retry the chunk'
   end
 
+  # Seconds as digits, or an HTTP date in any of its three forms, and nothing
+  # else: through 5.6.1 `Float()` read `0x10` as 16 s, `1_0` as 10 s and `1e3`
+  # as 1000 s.
+  def test_a_retry_after_is_digits_or_an_http_date
+    at = Time.now.utc + 1
+    {
+      '0x10' => :quota_exceeded, '1_0' => :quota_exceeded, '1e3' => :quota_exceeded, '1e400' => :quota_exceeded,
+      '1.5' => :quota_exceeded, '+1' => :quota_exceeded, '-1' => :quota_exceeded, 'tomorrow' => :quota_exceeded,
+      '0' => :rate_limited, '120' => :rate_limited, at.httpdate => :rate_limited,
+      at.strftime('%A, %d-%b-%y %H:%M:%S GMT') => :rate_limited,
+      at.strftime('%a %b %e %H:%M:%S %Y') => :rate_limited,
+    }.each do |value, kind|
+      stub_lookups('1.1.1.1' => { status: 429, body: { 'error' => 'slow down' }, headers: { 'Retry-After' => value } })
+      error = assert_raises(VPNDetection::Error, value) { VPNDetection::Client.new(retries: 0).lookup('1.1.1.1') }
+
+      assert_equal kind, error.kind, "Retry-After #{value.inspect}"
+    ensure
+      Typhoeus::Expectation.clear
+    end
+  end
+
   def test_a_cached_answer_expires_with_its_ttl
     calls = stub_lookups('1.1.1.1' => { body: OK_BODY })
     client = VPNDetection::Client.new(cache_ttl: 0.05)
@@ -342,9 +363,9 @@ class ClientTest < Minitest::Test
 
   # A chunk's retry waits on the same bound as a single call's (measured on
   # 5.4.1: 2147484 held the batch, and 9223372036854775807 and 1e400 raised a
-  # raw RangeError out of `sleep`).
+  # raw RangeError out of `sleep`). 1e400 is not seconds from 5.6.2.
   def test_a_batch_waits_out_a_retry_after_past_the_bound_on_the_backoff
-    %w[2147484 9223372036854775807 1e400].each do |value|
+    ['2147484', '9223372036854775807', '1' + ('0' * 400)].each do |value|
       Typhoeus.stub("#{BASE_URL}/batch").and_return(
         [json_response(429, { 'error' => 'slow down' }, 'Retry-After' => value),
          json_response(200, { 'results' => { '9.9.9.9' => OK_BODY.merge('ip' => '9.9.9.9') }, 'errors' => {} })],
