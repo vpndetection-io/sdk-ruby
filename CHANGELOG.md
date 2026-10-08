@@ -2,6 +2,14 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.6.2 - 2026-10-08
+
+### Fixes
+
+- Retry a lookup, my_ip, my_entitlement or batch answer a call cannot read ([`043a0e4`](https://github.com/vpndetection-io/sdk-ruby/commit/043a0e4bd2688c06dfd607d0402ad99931291b7e))
+- Carry the status when the download link answers 2xx, not its redirect ([`2d191d4`](https://github.com/vpndetection-io/sdk-ruby/commit/2d191d4ea51600ff0893c735491f03be802bcd3b))
+- Read a Retry-After as digits or an HTTP date, and nothing else ([`1670ab8`](https://github.com/vpndetection-io/sdk-ruby/commit/1670ab84c3c49370eadafec439a976e2bab6239c))
+
 ## 5.6.1 - 2026-10-06
 
 ### Fixes
