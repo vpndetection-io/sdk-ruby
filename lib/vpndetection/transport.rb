@@ -180,22 +180,43 @@ module VPNDetection
       raise Error.from_transport(response) if transport_failure?(response)
       raise Error.from_status(response.code, response.headers, response.body) unless response.success?
 
-      Entitlement.build_from_hash(parse_object(response))
+      body = parse_object(response)
+      begin
+        Entitlement.build_from_hash(body)
+      rescue StandardError => e
+        raise Error.new(:server_error, "could not read the answer as Entitlement: #{e.message}",
+                        status: response.code)
+      end
     end
 
     def self.lookup_result(response)
       raise Error.from_transport(response) if transport_failure?(response)
       raise Error.from_status(response.code, response.headers, response.body) unless response.success?
 
-      Result.new(parse_object(response))
+      body = parse_object(response)
+      return Result.new(body) if lookup_answer?(body)
+
+      raise Error.new(:server_error, 'the answer carried no ip and is_vpn', status: response.code)
     end
 
-    # The two maps of a batch answer, each present even when empty.
+    # Whether a parsed body is a lookup's answer: every plan's carries `ip` and
+    # `is_vpn`, so one without them is a 2xx the call cannot read.
+    def self.lookup_answer?(body)
+      body.is_a?(Hash) && body['ip'].is_a?(String) && [true, false].include?(body['is_vpn'])
+    end
+
+    # The two maps of a batch answer, each present even when empty. An answer
+    # carrying neither is unreadable as a whole, and is retried as one.
     def self.batch_body(response)
       raise Error.from_transport(response) if transport_failure?(response)
       raise Error.from_status(response.code, response.headers, response.body) unless response.success?
 
       body = parse_object(response)
+      unless body['results'].is_a?(Hash) || body['errors'].is_a?(Hash)
+        raise Error.new(:server_error, 'the batch answer carried neither results nor errors',
+                        status: response.code)
+      end
+
       {
         'results' => body['results'].is_a?(Hash) ? body['results'] : {},
         'errors' => body['errors'].is_a?(Hash) ? body['errors'] : {},

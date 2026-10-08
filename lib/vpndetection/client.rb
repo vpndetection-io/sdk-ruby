@@ -340,15 +340,17 @@ module VPNDetection
     end
 
     # Every address lands in exactly one of `results` and `errors`; an address in
-    # neither is the server breaking its own contract, and is reported as such
-    # rather than lost.
+    # neither, or with an entry that is not an answer, is the server breaking its
+    # own contract, and is reported as that address's error rather than lost.
     def batch_answer(ip, body)
-      if (served = body['results'][ip])
+      served = body['results'][ip]
+      failed = body['errors'][ip]
+      if Transport.lookup_answer?(served)
         Result.new(served)
-      elsif (failed = body['errors'][ip])
+      elsif failed.is_a?(Hash)
         Error.from_entry(failed['status'], failed['error'])
       else
-        Error.new(:server_error, "the batch answer did not include #{ip}", status: 200)
+        Error.new(:server_error, "the batch answer carried no readable entry for #{ip}", status: 200)
       end
     end
   end

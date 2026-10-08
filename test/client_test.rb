@@ -103,6 +103,96 @@ class ClientTest < Minitest::Test
     assert error.retryable?
   end
 
+  UNREADABLE = {
+    'an HTML page' => ['<html>gateway</html>', { 'Content-Type' => 'text/html' }],
+    'a cut-off body' => ['{"ip":"1.1.1.1","is_v', {}],
+    'an empty body' => ['', {}],
+    'an array' => ['[]', {}],
+    'an object with no member it requires' => ['{}', {}],
+    'members of the wrong type' => ['{"ip":5,"is_vpn":"x","results":[],"errors":"x"}', {}],
+    'an answer without its ip' => ['{"is_vpn":true}', {}],
+  }.freeze
+
+  # Through 5.6.1 an object without `ip` and `is_vpn` came back from a lookup as
+  # a Result of nils, and my_entitlement raised the generated model's raw
+  # ArgumentError, each after one request.
+  def test_a_2xx_that_is_not_its_answer_is_a_retried_server_error
+    client = VPNDetection::Client.new(cache: false, retries: 1)
+    calls = {
+      'lookup' => -> { client.lookup('1.1.1.1') },
+      'my_ip' => -> { client.my_ip },
+      'my_entitlement' => -> { client.my_entitlement },
+    }
+    UNREADABLE.each do |name, (body, headers)|
+      calls.each do |call_name, call|
+        sent = 0
+        Typhoeus.stub(%r{\A#{Regexp.escape(BASE_URL)}/}).and_return do
+          sent += 1
+          json_response(200, body, headers)
+        end
+        error = assert_raises(VPNDetection::Error, "#{call_name}, #{name}") { call.call }
+
+        assert_equal :server_error, error.kind, "#{call_name}, #{name}: #{error.message}"
+        assert_equal 200, error.status, "#{call_name}, #{name}"
+        assert_equal 2, sent, "#{call_name}, #{name}: retried"
+      ensure
+        Typhoeus::Expectation.clear
+      end
+    end
+  end
+
+  # A chunk carrying neither map is unreadable as a whole, so it is retried as
+  # one; through 5.6.1 it marked every address at once, with no retry.
+  def test_a_batch_chunk_that_is_not_its_answer_is_retried
+    UNREADABLE.each do |name, (body, headers)|
+      sent = 0
+      Typhoeus.stub("#{BASE_URL}/batch").and_return do
+        sent += 1
+        json_response(200, body, headers)
+      end
+      answers = VPNDetection::Client.new(cache: false, retries: 1).lookup_batch(%w[1.1.1.1 8.8.8.8])
+
+      answers.each do |ip, answer|
+        assert_kind_of VPNDetection::Error, answer, "#{name}, #{ip}"
+        assert_equal :server_error, answer.kind, "#{name}, #{ip}"
+        assert_equal 200, answer.status, "#{name}, #{ip}"
+      end
+      assert_equal 2, sent, "#{name}: the chunk was retried"
+    ensure
+      Typhoeus::Expectation.clear
+    end
+  end
+
+  # Through 5.6.1 an entry that was not an object escaped the whole batch as a
+  # raw TypeError, or came back as a Result of nils.
+  def test_a_batch_entry_that_is_not_an_answer_is_that_addresses_error_alone
+    body = {
+      'results' => {
+        '1.1.1.1' => { 'ip' => '1.1.1.1', 'is_vpn' => true },
+        '2.2.2.2' => 'x',
+        '3.3.3.3' => 5,
+        '4.4.4.4' => { 'ip' => '4.4.4.4' },
+      },
+      'errors' => { '5.5.5.5' => 7, '6.6.6.6' => { 'status' => 404, 'error' => 'not found' } },
+    }
+    sent = 0
+    Typhoeus.stub("#{BASE_URL}/batch").and_return do
+      sent += 1
+      json_response(200, body)
+    end
+    ips = %w[1.1.1.1 2.2.2.2 3.3.3.3 4.4.4.4 5.5.5.5 6.6.6.6 7.7.7.7]
+    answers = VPNDetection::Client.new(cache: false, retries: 1).lookup_batch(ips)
+
+    assert_equal true, answers['1.1.1.1'].is_vpn
+    %w[2.2.2.2 3.3.3.3 4.4.4.4 5.5.5.5 7.7.7.7].each do |ip|
+      assert_kind_of VPNDetection::Error, answers[ip], ip
+      assert_equal :server_error, answers[ip].kind, ip
+      assert_equal 200, answers[ip].status, ip
+    end
+    assert_equal :bad_request, answers['6.6.6.6'].kind
+    assert_equal 1, sent, 'one unreadable entry does not retry the chunk'
+  end
+
   def test_a_cached_answer_expires_with_its_ttl
     calls = stub_lookups('1.1.1.1' => { body: OK_BODY })
     client = VPNDetection::Client.new(cache_ttl: 0.05)
