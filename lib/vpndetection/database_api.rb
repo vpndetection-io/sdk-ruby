@@ -181,8 +181,8 @@ module VPNDetection
     # every non-2xx as a failure, so it arrives as an ApiError carrying the
     # Location header.
     def redirect_location(id, format, timeout)
-      @api.download_database(id, format, timeout: timeout)
-      raise Error.new(:server_error, 'expected a redirect to object storage')
+      _, status, = @api.download_database_with_http_info(id, format, timeout: timeout)
+      raise Error.new(:server_error, 'expected a redirect to object storage', status: status)
     rescue ApiError => e
       raise unless e.code == 302
 

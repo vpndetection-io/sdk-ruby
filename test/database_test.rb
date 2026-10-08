@@ -116,6 +116,18 @@ class DatabaseTest < Minitest::Test
     assert_equal location, @client.database.download_url('vpn_ip_extended_v1', 'csvgz')
   end
 
+  # A link answered with a 2xx in place of the 302 is retried; through 5.6.1 its
+  # error carried no status.
+  def test_a_2xx_in_place_of_the_redirect_is_a_retried_server_error_with_its_status
+    calls = stub_database('/api/v1/database/download', 200, { 'url' => 'https://s3.example.test/x' })
+    client = VPNDetection::Client.new(api_key: 'test-key', retries: 1)
+    error = assert_raises(VPNDetection::Error) { client.database.download_url('vpn_ip_extended_v1', 'csvgz') }
+
+    assert_equal :server_error, error.kind
+    assert_equal 200, error.status
+    assert_equal 2, calls.length
+  end
+
   def test_download_url_does_not_follow_the_redirect
     # The redirect points back at this same server, so a follow shows up as a
     # second request. Pointing it at an unresolvable host would not: curl still
