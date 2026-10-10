@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.6.3 - 2026-10-10
+
+### Fixes
+
+- Re-pin the spec to 2026.10.09: rotating a key needs apikeys.reveal ([`5cbbe6e`](https://github.com/vpndetection-io/sdk-ruby/commit/5cbbe6ea1de8007f04944c92d203ea175845a3ad))
+
 ## 5.6.2 - 2026-10-08
 
 ### Fixes
