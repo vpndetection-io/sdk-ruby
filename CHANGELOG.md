@@ -2,6 +2,16 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.7.0 - 2026-10-17
+
+### Features
+
+- Re-pin the spec to 2026.10.16: dynamic client registration ([`96b4309`](https://github.com/vpndetection-io/sdk-ruby/commit/96b43097f1c85f69d0c048397397bf65ab5a71ab))
+
+### Fixes
+
+- Say the three proxy flags are Scale and above ([`3661797`](https://github.com/vpndetection-io/sdk-ruby/commit/3661797fc09c9b8678727784e966e1354c72fbde))
+
 ## 5.6.4 - 2026-10-16
 
 ### Fixes
