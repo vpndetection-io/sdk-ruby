@@ -109,7 +109,7 @@ module VPNDetection
     end
 
     # Whether the address was seen in a residential proxy pool, or nil when your
-    # plan does not include it. Max only.
+    # plan does not include it. Scale and above.
     def is_resproxy
       @raw['is_resproxy']
     end
@@ -120,7 +120,7 @@ module VPNDetection
     end
 
     # Whether the address was seen in a datacenter proxy pool, or nil when your
-    # plan does not include it. Max only.
+    # plan does not include it. Scale and above.
     def is_dcproxy
       @raw['is_dcproxy']
     end
@@ -131,7 +131,7 @@ module VPNDetection
     end
 
     # Whether the address was seen in a mobile proxy pool, or nil when your plan
-    # does not include it. Max only.
+    # does not include it. Scale and above.
     def is_mobproxy
       @raw['is_mobproxy']
     end
