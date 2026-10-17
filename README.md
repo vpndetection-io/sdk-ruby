@@ -43,7 +43,7 @@ client = VPNDetection::Client.new(api_key: ENV['VPNDETECTION_API_KEY'])
 
 result = client.lookup('45.83.91.1')
 result.is_vpn               # => true
-result.vpn['provider']      # => "mullvad"
+result.vpn['provider']      # => "nordvpn"
 result.is_hosting           # => true
 result.hosting['provider']  # => "M247"
 ```
