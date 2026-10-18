@@ -19,9 +19,10 @@ module VPNDetection
   class Result
     FLAGS = %w[
       is_vpn is_hosting is_relay is_tor is_cdn is_resproxy is_dcproxy is_mobproxy
+      is_pubproxy
     ].freeze
 
-    DETAILS = %w[vpn hosting relay tor cdn resproxy dcproxy mobproxy].freeze
+    DETAILS = %w[vpn hosting relay tor cdn resproxy dcproxy mobproxy pubproxy].freeze
 
     # The response exactly as it came off the wire, with its original names.
     # Frozen, because the cache hands this same object to every later caller of
@@ -141,6 +142,18 @@ module VPNDetection
       @raw['is_mobproxy'] == true
     end
 
+    # Whether a public proxy, one anyone can connect through, listens on the
+    # address or sends its traffic out from it, or nil when your plan does not
+    # include it. Scale and above.
+    def is_pubproxy
+      @raw['is_pubproxy']
+    end
+
+    # `is_pubproxy` with an absent member read as false.
+    def pubproxy?
+      @raw['is_pubproxy'] == true
+    end
+
     # Detail for `is_vpn`: provider, last_seen, and on max confidence and method.
     def vpn
       @raw['vpn']
@@ -179,6 +192,13 @@ module VPNDetection
     # Detail for `is_mobproxy`. Max only.
     def mobproxy
       @raw['mobproxy']
+    end
+
+    # Detail for `is_pubproxy`: entry, exit, protocols, last_seen and
+    # last_usable, the last an empty string when no request through a proxy on
+    # the address was answered. Max only.
+    def pubproxy
+      @raw['pubproxy']
     end
 
     def to_h

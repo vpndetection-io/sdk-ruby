@@ -111,7 +111,7 @@ class ConformanceTest < Minitest::Test
       (c['expect']['emptyPresent'] || []).each do |field|
         assert_equal({}, result.public_send(field), "#{c['name']}: #{field} must be present and empty")
       end
-      %w[vpn hosting dcproxy].each do |detail|
+      %w[vpn hosting dcproxy pubproxy].each do |detail|
         next if c['expect'][detail].nil?
 
         assert_equal c['expect'][detail], result.public_send(detail), "#{c['name']}: #{detail}"
