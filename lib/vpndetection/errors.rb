@@ -104,9 +104,11 @@ module VPNDetection
       return nil if value.empty?
       return Integer(value, 10) if value.match?(/\A\d+\z/)
 
-      # The header also permits an HTTP date.
+      # The header also permits an HTTP date, naming a real day: `Time.httpdate`
+      # reads `31 Nov` as 1 December, and the day it names comes first in all
+      # three forms.
       when_at = Time.httpdate(value) rescue nil
-      return nil if when_at.nil?
+      return nil if when_at.nil? || when_at.day != value[/\d+/].to_i
 
       [0, (when_at - Time.now).ceil].max
     end

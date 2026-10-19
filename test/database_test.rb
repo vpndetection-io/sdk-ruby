@@ -250,6 +250,24 @@ class DatabaseTest < Minitest::Test
     assert_equal 0.25, VPNDetection::Retries.delay_for(throttle.call(2_147_483.648), 1), 'and past it, the backoff'
   end
 
+  # Through 5.8.0 `Time.httpdate` read a day past the month's end as the next
+  # month's, so `31 Nov` was a throttle until 1 December.
+  def test_a_retry_after_date_names_a_real_day
+    ['Tue, 31 Nov 2026 10:00:00 GMT', 'Tuesday, 31-Nov-26 10:00:00 GMT', 'Tue Nov 31 10:00:00 2026',
+     'Mon, 29 Feb 2027 10:00:00 GMT'].each do |value|
+      Typhoeus.stub("#{BASE_URL}/api/v1/database/list").and_return(
+        json_response(429, { 'rc' => 'RATE_LIMITED' }, 'Retry-After' => value),
+      )
+      error = assert_raises(VPNDetection::Error, value) do
+        VPNDetection::Client.new(api_key: 'test-key', retries: 0).database.list
+      end
+
+      assert_equal :quota_exceeded, error.kind, "Retry-After #{value.inspect}"
+    ensure
+      Typhoeus::Expectation.clear
+    end
+  end
+
   # Honored, 2147484 held the call for 24.8 days, and 9223372036854775807 and
   # 1e400 raised a raw RangeError out of `sleep` (measured on 5.4.1). 1e400 is
   # not seconds from 5.6.2, so 401 digits stand in for it.
