@@ -2,6 +2,16 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.9.0 - 2026-10-19
+
+### Features
+
+- Re-pin the spec to 2026.10.19: num_ports and num_proxies in the pubproxy detail ([`fa10460`](https://github.com/vpndetection-io/sdk-ruby/commit/fa10460114f48c1e263b7b03df0bd3d78be2c4fa))
+
+### Fixes
+
+- Read a Retry-After date only when it names a real day ([`2c66615`](https://github.com/vpndetection-io/sdk-ruby/commit/2c666151b7d820d9ec86e03dfce385d21f2e9f64))
+
 ## 5.8.0 - 2026-10-18
 
 ### Features
