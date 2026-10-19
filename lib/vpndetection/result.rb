@@ -194,9 +194,11 @@ module VPNDetection
       @raw['mobproxy']
     end
 
-    # Detail for `is_pubproxy`: entry, exit, protocols, last_seen and
-    # last_usable, the last an empty string when no request through a proxy on
-    # the address was answered. Max only.
+    # Detail for `is_pubproxy`: entry, exit, protocols, num_ports,
+    # num_proxies, last_seen and last_usable. num_ports is 0 when the address
+    # is only an exit and num_proxies 0 when it is only an entry; last_usable is
+    # an empty string when no request through a proxy on the address was
+    # answered. Max only.
     def pubproxy
       @raw['pubproxy']
     end
