@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.9.1 - 2026-10-20
+
+### Fixes
+
+- Refuse a member of the wrong type, or a null the spec does not allow ([`a1fdbc8`](https://github.com/vpndetection-io/sdk-ruby/commit/a1fdbc8d39a9ed8b3b07b9876df1d8bf5a9f2dc3))
+
 ## 5.9.0 - 2026-10-19
 
 ### Features
