@@ -345,9 +345,9 @@ module VPNDetection
     def batch_answer(ip, body)
       served = body['results'][ip]
       failed = body['errors'][ip]
-      if Transport.lookup_answer?(served)
+      if Transport.conforms?(served, 'LookupResponse')
         Result.new(served)
-      elsif failed.is_a?(Hash)
+      elsif Transport.conforms?(failed, 'BatchLookupError')
         Error.from_entry(failed['status'], failed['error'])
       else
         Error.new(:server_error, "the batch answer carried no readable entry for #{ip}", status: 200)

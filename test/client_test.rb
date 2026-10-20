@@ -3,6 +3,8 @@
 # What the shared corpus cannot pin: the Ruby surface, the retry policy's cost in
 # requests, and the concurrency a batch genuinely reaches.
 
+require 'yaml'
+
 require_relative 'test_helper'
 
 class ClientTest < Minitest::Test
@@ -191,6 +193,112 @@ class ClientTest < Minitest::Test
     end
     assert_equal :bad_request, answers['6.6.6.6'].kind
     assert_equal 1, sent, 'one unreadable entry does not retry the chunk'
+  end
+
+  WRONG_TYPED = {
+    'a flag of "yes"' => { 'is_hosting' => 'yes' },
+    'a flag of 1' => { 'is_tor' => 1 },
+    'is_vpn of null' => { 'is_vpn' => nil },
+    'a detail of "x"' => { 'vpn' => 'x' },
+    'a numeric string in a detail' => { 'dcproxy' => { 'provider' => 'p', 'hits' => '3' } },
+    'a count as a string' => { 'pubproxy' => { 'entry' => true, 'num_ports' => '3' } },
+    'a null protocol' => { 'pubproxy' => { 'entry' => true, 'protocols' => [nil] } },
+    'an ip of 5' => { 'ip' => 5 },
+  }.freeze
+
+  # Through 5.9.0 a member of the wrong type, or a null the spec does not
+  # allow, came back from a lookup and my_ip as the answer, after one request:
+  # `"is_hosting": "yes"` as "yes", a detail of `"x"` as "x". The entitlement
+  # did the same with `"requests": "1"`, read as 1, and `[null]` CIDRs, read as
+  # `[""]`. A null in a member the spec does not require still reads as absent.
+  def test_a_member_of_the_wrong_type_is_a_retried_server_error
+    client = VPNDetection::Client.new(cache: false, retries: 1)
+    answers = WRONG_TYPED.to_h do |name, member|
+      ["lookup, #{name}", [-> { client.lookup('1.1.1.1') }, { 'ip' => '1.1.1.1', 'is_vpn' => true }.merge(member)]]
+    end
+    answers['my_ip, a flag of "yes"'] = [-> { client.my_ip }, { 'ip' => '1.1.1.1', 'is_vpn' => true, 'is_relay' => 'yes' }]
+    usage = ENTITLEMENT_BODY['usage']
+    apikey = ENTITLEMENT_BODY['apikey']
+    {
+      'requests of "1"' => ENTITLEMENT_BODY.merge('usage' => usage.merge('requests' => '1')),
+      'a null CIDR' => ENTITLEMENT_BODY.merge('apikey' => apikey.merge('allowed_cidrs' => [nil])),
+      'CIDRs of null' => ENTITLEMENT_BODY.merge('apikey' => apikey.merge('allowed_cidrs' => nil)),
+      'a tier of 3' => ENTITLEMENT_BODY.merge('plan' => { 'key' => 'max', 'tier' => 3 }),
+    }.each { |name, body| answers["my_entitlement, #{name}"] = [-> { client.my_entitlement }, body] }
+    answers.each do |name, (call, body)|
+      sent = 0
+      Typhoeus.stub(%r{\A#{Regexp.escape(BASE_URL)}/}).and_return do
+        sent += 1
+        json_response(200, body)
+      end
+      error = assert_raises(VPNDetection::Error, name) { call.call }
+
+      assert_equal :server_error, error.kind, "#{name}: #{error.message}"
+      assert_equal 200, error.status, name
+      assert_equal 2, sent, "#{name}: retried"
+    ensure
+      Typhoeus::Expectation.clear
+    end
+  end
+
+  # Through 5.9.0 a batch entry of the wrong type came back as a Result, and an
+  # error entry whose status was `"400"` as an error of no known kind.
+  def test_a_batch_entry_of_the_wrong_type_is_that_addresses_error_alone
+    results = WRONG_TYPED.values.each_with_index.to_h do |member, i|
+      ["9.9.9.#{i + 1}", { 'ip' => "9.9.9.#{i + 1}", 'is_vpn' => true }.merge(member)]
+    end
+    results['1.1.1.1'] = { 'ip' => '1.1.1.1', 'is_vpn' => false, 'pubproxy' => {} }
+    errors = { '2.2.2.2' => { 'status' => '400', 'error' => 'bad' }, '3.3.3.3' => { 'status' => 400, 'error' => nil } }
+    sent = 0
+    Typhoeus.stub("#{BASE_URL}/batch").and_return do
+      sent += 1
+      json_response(200, { 'results' => results, 'errors' => errors })
+    end
+    answers = VPNDetection::Client.new(cache: false, retries: 1).lookup_batch(results.keys + errors.keys)
+
+    assert_equal false, answers['1.1.1.1'].is_vpn
+    (results.keys - ['1.1.1.1'] + errors.keys).each do |ip|
+      assert_kind_of VPNDetection::Error, answers[ip], ip
+      assert_equal :server_error, answers[ip].kind, ip
+      assert_equal 200, answers[ip].status, ip
+    end
+    assert_equal 1, sent, 'one unreadable entry does not retry the chunk'
+  end
+
+  # Transport::REQUIRED is the spec's `required` for every model a lookup, a
+  # batch, the entitlement or a database call reads, and the null check stands
+  # on no list entry or map value being nullable there.
+  def test_the_required_members_are_the_specs
+    spec = YAML.safe_load_file(File.expand_path('../spec/openapi.yaml', __dir__))
+    inline = ->(path) { spec.dig('paths', path, 'get', 'responses', '200', 'content', 'application/json', 'schema') }
+    schemas = spec.dig('components', 'schemas').merge(
+      'DatabaseList' => inline.call('/api/v1/database/list'),
+      'DownloadList' => inline.call('/api/v1/database/downloads'),
+      'DatabaseChecksumsResponse' => inline.call('/api/v1/database/checksum'),
+    )
+    read = []
+    walk = lambda do |type|
+      name = type.to_s[/\w+>*\z/].delete('>')
+      model = VPNDetection.const_get(name) if VPNDetection.const_defined?(name)
+      next unless model.respond_to?(:openapi_types) && !read.include?(name)
+
+      read << name
+      model.openapi_types.each_value { |member| walk.call(member) }
+    end
+    %w[LookupResponse BatchLookupError Entitlement DatabaseList DatabaseMetadata DatabaseChecksumsResponse
+       DownloadList].each { |root| walk.call(root) }
+
+    assert_equal read.sort, VPNDetection::Transport::REQUIRED.keys.sort
+    VPNDetection::Transport::REQUIRED.each do |name, members|
+      schema = schemas.fetch(name)
+
+      assert_equal schema.fetch('required', []).sort, members.map(&:to_s).sort, name
+      schema.fetch('properties').each do |member, property|
+        [property['items'], property['additionalProperties'], property.dig('additionalProperties', 'items')].compact.each do |inner|
+          refute inner['nullable'], "#{name}.#{member}: a nullable entry"
+        end
+      end
+    end
   end
 
   # Seconds as digits, or an HTTP date in any of its three forms, and nothing

@@ -86,11 +86,18 @@ module VPNDetection
     # the spec requires. The generated reader raised a RuntimeError, a
     # JSON::ParserError or an ArgumentError for those, none of them retried, and
     # handed an empty or non-object body back as nil, as if it were the answer.
+    #
+    # Every member present is checked against the type the spec gives it, at any
+    # depth, before the answer is handed back: the generated reader converts with
+    # `to_i`, so `"version":"x"` came back as 0 and `"version":"3"` as 3, and it
+    # skips a list member sent as null, so `"versions": null` came back as nil
+    # (5.9.0, measured 2026-10-20).
     def deserialize(response, return_type)
       data = super
-      return data unless data.nil?
+      raise Error.new(:server_error, "the API answered with no #{return_type}", status: response.code) if data.nil?
 
-      raise Error.new(:server_error, "the API answered with no #{return_type}", status: response.code)
+      Transport.check_type!(JSON.parse(response.body.to_s), return_type.to_s, 'the answer')
+      data
     rescue Error
       raise
     rescue StandardError => e
@@ -182,6 +189,7 @@ module VPNDetection
 
       body = parse_object(response)
       begin
+        check_type!(body, 'Entitlement', 'the answer')
         Entitlement.build_from_hash(body)
       rescue StandardError => e
         raise Error.new(:server_error, "could not read the answer as Entitlement: #{e.message}",
@@ -194,15 +202,21 @@ module VPNDetection
       raise Error.from_status(response.code, response.headers, response.body) unless response.success?
 
       body = parse_object(response)
-      return Result.new(body) if lookup_answer?(body)
-
-      raise Error.new(:server_error, 'the answer carried no ip and is_vpn', status: response.code)
+      begin
+        check_type!(body, 'LookupResponse', 'the answer')
+      rescue TypeError => e
+        raise Error.new(:server_error, "could not read the answer as LookupResponse: #{e.message}",
+                        status: response.code)
+      end
+      Result.new(body)
     end
 
-    # Whether a parsed body is a lookup's answer: every plan's carries `ip` and
-    # `is_vpn`, so one without them is a 2xx the call cannot read.
-    def self.lookup_answer?(body)
-      body.is_a?(Hash) && body['ip'].is_a?(String) && [true, false].include?(body['is_vpn'])
+    # Whether a parsed value is the generated `type`: a batch entry that is not
+    # is that address's error alone.
+    def self.conforms?(value, type)
+      check_type!(value, type, 'the entry')
+    rescue TypeError
+      false
     end
 
     # The two maps of a batch answer, each present even when empty. An answer
@@ -269,5 +283,81 @@ module VPNDetection
     end
 
     private_class_method :transport_failure?, :parse_object, :oauth_refusal
+
+    # The members the spec requires of each answer a lookup, a batch, the
+    # entitlement or a database call reads. One that is not nullable must be
+    # there and not null. Every plan's lookup carries `ip` and `is_vpn`, and a
+    # detail's members are as optional as the plan makes them.
+    # test/client_test.rb holds this to spec/openapi.yaml.
+    REQUIRED = {
+      'LookupResponse' => %i[ip is_vpn],
+      'VpnDetail' => [],
+      'ClassDetail' => [],
+      'ProxyDetail' => [],
+      'PubproxyDetail' => [],
+      'BatchLookupError' => %i[status error],
+      'Entitlement' => %i[org_id apikey plan usage],
+      'EntitlementApikey' => %i[id expires allowed_cidrs],
+      'EntitlementPlan' => %i[key tier],
+      'EntitlementUsage' => %i[requests quota hard_limit window_start window_end],
+      'DatabaseList' => %i[databases],
+      'Database' => %i[base name summary license_type starts expires renews_at notice_due_at in_term standing
+                       versions],
+      'DatabaseVersion' => %i[id version formats],
+      'DatabaseFormatSize' => %i[format bytes],
+      'DatabaseMetadata' => %i[id updated entries schema],
+      'DatabaseMetadataColumn' => %i[name type],
+      'DatabaseChecksumsResponse' => %i[id format checksums],
+      'DbChecksums' => %i[md5 sha1 sha256 sha512],
+      'DownloadList' => %i[downloads],
+      'Download' => %i[dataset_id format outcome sample bytes http_status apikey_id client_ip user_agent created],
+    }.freeze
+
+    # True when the parsed `value` has the generated `type`, a model's members
+    # recursively; raises TypeError naming where it does not. No list entry or
+    # map value the spec describes may be null: through 5.9.0 one came back as
+    # nil, or as 0 in `size`, and a lookup's `"is_hosting": "yes"` came back as
+    # the answer.
+    def self.check_type!(value, type, where)
+      raise TypeError, "#{where} is null" if value.nil?
+
+      typed =
+        case type
+        when 'String', 'Date', 'Time' then value.is_a?(String)
+        when 'Integer' then value.is_a?(Integer)
+        when 'Float' then value.is_a?(Numeric)
+        when 'Boolean' then [true, false].include?(value)
+        when 'Object' then true
+        when /\AArray<(?<inner>.+)>\z/
+          inner = Regexp.last_match(:inner)
+          value.is_a?(Array) && value.each_with_index.all? { |v, i| check_type!(v, inner, "#{where}[#{i}]") }
+        when /\AHash<String, ?(?<inner>.+)>\z/
+          inner = Regexp.last_match(:inner)
+          value.is_a?(Hash) && value.all? { |k, v| check_type!(v, inner, "#{where}.#{k}") }
+        else
+          model = VPNDetection.const_get(type)
+          if model.respond_to?(:openapi_types)
+            value.is_a?(Hash) && model.openapi_types.all? { |attr, member| check_member!(model, attr, member, value, where) }
+          else
+            value.is_a?(String) # an enum
+          end
+        end
+      return true if typed
+
+      raise TypeError, "#{where} is not a #{type}"
+    end
+
+    # A member absent or null reads as absent, unless the spec requires it and
+    # does not make it nullable.
+    def self.check_member!(model, attr, member, value, where)
+      key = model.attribute_map[attr].to_s
+      return check_type!(value[key], member.to_s, "#{where}.#{key}") unless value[key].nil?
+      return true unless REQUIRED.fetch(model.name.split('::').last).include?(attr)
+      return true if model.openapi_nullable.include?(attr)
+
+      raise TypeError, "#{where}.#{key} is #{value.key?(key) ? 'null' : 'missing'}"
+    end
+
+    private_class_method :check_member!
   end
 end

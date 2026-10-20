@@ -318,6 +318,77 @@ class DatabaseTest < Minitest::Test
     end
   end
 
+  FAMILY = {
+    'base' => 'vpn_ip_extended', 'name' => 'VPN IP Extended', 'summary' => 'extended rows',
+    'license_type' => 'standard', 'starts' => nil, 'expires' => nil, 'renews_at' => nil, 'notice_due_at' => nil,
+    'in_term' => true, 'standing' => 'licensed',
+    'versions' => [{ 'id' => 'vpn_ip_extended_v1', 'version' => 1, 'formats' => [{ 'format' => 'csvgz', 'bytes' => 10 }] }],
+  }.freeze
+  METADATA = {
+    'id' => 'vpn_ip_extended_v1', 'updated' => '2026-09-02', 'entries' => 42,
+    'schema' => { 'csvgz' => [{ 'name' => 'ip', 'type' => 'string' }] },
+    'size' => { 'csvgz' => 760 }, 'sample' => { 'csvgz' => [{ 'ip' => '1.1.1.1' }] },
+  }.freeze
+  DOWNLOAD = {
+    'dataset_id' => 'vpn_ip_extended_v1', 'format' => 'csvgz', 'outcome' => 'ok', 'sample' => false, 'bytes' => 10,
+    'http_status' => 302, 'apikey_id' => nil, 'client_ip' => nil, 'user_agent' => nil,
+    'created' => '2026-09-02T10:00:00Z',
+  }.freeze
+
+  # Through 5.9.0 each of these came back as the answer after one request: the
+  # generated reader read `"version":"3"` as 3, `"x"` as 0 and `"yes"` as true,
+  # skipped a list sent as null, and read a null size as 0.
+  def test_a_member_of_the_wrong_type_or_a_null_is_a_retried_server_error
+    version = FAMILY['versions'].first
+    answers = {
+      'a version of "3"' => ['/api/v1/database/list', { 'databases' => [FAMILY.merge('versions' => [version.merge('version' => '3')])] }],
+      'a version of "x"' => ['/api/v1/database/list', { 'databases' => [FAMILY.merge('versions' => [version.merge('version' => 'x')])] }],
+      'in_term of "yes"' => ['/api/v1/database/list', { 'databases' => [FAMILY.merge('in_term' => 'yes')] }],
+      'a null family' => ['/api/v1/database/list', { 'databases' => [FAMILY, nil] }],
+      'databases of null' => ['/api/v1/database/list', { 'databases' => nil }],
+      'versions of null' => ['/api/v1/database/list', { 'databases' => [FAMILY.merge('versions' => nil)] }],
+      'a null version' => ['/api/v1/database/list', { 'databases' => [FAMILY.merge('versions' => [nil])] }],
+      'a null format' => ['/api/v1/database/list', { 'databases' => [FAMILY.merge('versions' => [version.merge('formats' => [nil])])] }],
+      'entries of "42"' => ['/api/v1/database/metadata', METADATA.merge('entries' => '42')],
+      'a size of "760"' => ['/api/v1/database/metadata', METADATA.merge('size' => { 'csvgz' => '760' })],
+      'a size of null' => ['/api/v1/database/metadata', METADATA.merge('size' => { 'csvgz' => nil })],
+      'a null column' => ['/api/v1/database/metadata', METADATA.merge('schema' => { 'csvgz' => [nil] })],
+      'a null sample row' => ['/api/v1/database/metadata', METADATA.merge('sample' => { 'csvgz' => [nil] })],
+      'a sha256 of 5' => ['/api/v1/database/checksum', { 'id' => 'vpn_ip_extended_v1', 'format' => 'csvgz', 'checksums' => CHECKSUMS.merge('sha256' => 5) }],
+      'bytes of "10"' => ['/api/v1/database/downloads', { 'downloads' => [DOWNLOAD.merge('bytes' => '10')] }],
+      'downloads of null' => ['/api/v1/database/downloads', { 'downloads' => nil }],
+      'a null download' => ['/api/v1/database/downloads', { 'downloads' => [nil] }],
+    }
+    calls = {
+      '/api/v1/database/list' => ->(c) { c.database.list },
+      '/api/v1/database/metadata' => ->(c) { c.database.metadata('vpn_ip_extended_v1') },
+      '/api/v1/database/checksum' => ->(c) { c.database.checksums('vpn_ip_extended_v1', 'csvgz') },
+      '/api/v1/database/downloads' => ->(c) { c.database.downloads },
+    }
+    client = VPNDetection::Client.new(api_key: 'test-key', retries: 1)
+    answers.each do |name, (path, body)|
+      sent = stub_database(path, 200, body)
+      error = assert_raises(VPNDetection::Error, name) { calls.fetch(path).call(client) }
+
+      assert_equal :server_error, error.kind, "#{name}: #{error.message}"
+      assert_equal 200, error.status, name
+      assert_equal 2, sent.length, "#{name}: retried"
+    ensure
+      Typhoeus::Expectation.clear
+    end
+  end
+
+  # A member the spec makes nullable still reads as nil.
+  def test_every_member_of_the_right_type_reads
+    stub_database('/api/v1/database/list', 200, { 'databases' => [FAMILY] })
+    stub_database('/api/v1/database/metadata', 200, METADATA)
+    stub_database('/api/v1/database/downloads', 200, { 'downloads' => [DOWNLOAD] })
+
+    assert_nil @client.database.list.first.expires
+    assert_equal 760, @client.database.metadata('vpn_ip_extended_v1').size['csvgz']
+    assert_nil @client.database.downloads.first.apikey_id
+  end
+
   def test_a_2xx_that_is_not_its_answer_is_retried
     calls = stub_database('/api/v1/database/list', 200, '<html>gateway</html>', 'Content-Type' => 'text/html')
 
