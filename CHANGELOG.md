@@ -2,6 +2,13 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.10.0 - 2026-10-20
+
+### Features
+
+- Re-pin the spec to 2026.10.20: open on databases and downloads ([`fe61573`](https://github.com/vpndetection-io/sdk-ruby/commit/fe615737d18152a3456f4f101518b9a28dd3d430))
+- Add location and asn to lookup results, a bogon's included ([`704d53c`](https://github.com/vpndetection-io/sdk-ruby/commit/704d53c101821c624381772887cb81ee5cfd633b))
+
 ## 5.9.1 - 2026-10-20
 
 ### Fixes
