@@ -47,7 +47,7 @@ class DatabaseTest < Minitest::Test
                       'summary' => 'extended rows', 'license_type' => 'standard',
                       'starts' => '2026-01-01T00:00:00.000Z', 'expires' => nil,
                       'renews_at' => nil, 'notice_due_at' => nil,
-                      'in_term' => true, 'standing' => 'licensed',
+                      'in_term' => true, 'standing' => 'licensed', 'open' => false,
                       'versions' => [{
                         'id' => 'vpn_ip_extended_v1', 'version' => 1,
                         'formats' => [{ 'format' => 'csvgz', 'bytes' => 1024 }],
@@ -97,7 +97,7 @@ class DatabaseTest < Minitest::Test
     calls = stub_database('/api/v1/database/downloads', 200, {
                             'downloads' => [{
                               'dataset_id' => 'vpn_ip_extended_v1', 'format' => 'csvgz',
-                              'outcome' => 'ok', 'sample' => false, 'bytes' => 10,
+                              'outcome' => 'ok', 'sample' => false, 'open' => false, 'bytes' => 10,
                               'http_status' => 302, 'apikey_id' => 'mk_1234abcd',
                               'client_ip' => '203.0.113.7', 'user_agent' => 'vpndetection-ruby/1.0.0',
                               'created' => '2026-09-02T10:00:00Z',
@@ -321,7 +321,7 @@ class DatabaseTest < Minitest::Test
   FAMILY = {
     'base' => 'vpn_ip_extended', 'name' => 'VPN IP Extended', 'summary' => 'extended rows',
     'license_type' => 'standard', 'starts' => nil, 'expires' => nil, 'renews_at' => nil, 'notice_due_at' => nil,
-    'in_term' => true, 'standing' => 'licensed',
+    'in_term' => true, 'standing' => 'licensed', 'open' => false,
     'versions' => [{ 'id' => 'vpn_ip_extended_v1', 'version' => 1, 'formats' => [{ 'format' => 'csvgz', 'bytes' => 10 }] }],
   }.freeze
   METADATA = {
@@ -330,7 +330,7 @@ class DatabaseTest < Minitest::Test
     'size' => { 'csvgz' => 760 }, 'sample' => { 'csvgz' => [{ 'ip' => '1.1.1.1' }] },
   }.freeze
   DOWNLOAD = {
-    'dataset_id' => 'vpn_ip_extended_v1', 'format' => 'csvgz', 'outcome' => 'ok', 'sample' => false, 'bytes' => 10,
+    'dataset_id' => 'vpn_ip_extended_v1', 'format' => 'csvgz', 'outcome' => 'ok', 'sample' => false, 'open' => false, 'bytes' => 10,
     'http_status' => 302, 'apikey_id' => nil, 'client_ip' => nil, 'user_agent' => nil,
     'created' => '2026-09-02T10:00:00Z',
   }.freeze

@@ -295,6 +295,9 @@ module VPNDetection
       'ClassDetail' => [],
       'ProxyDetail' => [],
       'PubproxyDetail' => [],
+      'Location' => %i[continent continent_name country country_name timezone currency_code currency_name
+                       currency_symbol flag_emoji flag_unicode],
+      'Asn' => %i[asn name domain type prefix],
       'BatchLookupError' => %i[status error],
       'Entitlement' => %i[org_id apikey plan usage],
       'EntitlementApikey' => %i[id expires allowed_cidrs],
@@ -302,7 +305,7 @@ module VPNDetection
       'EntitlementUsage' => %i[requests quota hard_limit window_start window_end],
       'DatabaseList' => %i[databases],
       'Database' => %i[base name summary license_type starts expires renews_at notice_due_at in_term standing
-                       versions],
+                       open versions],
       'DatabaseVersion' => %i[id version formats],
       'DatabaseFormatSize' => %i[format bytes],
       'DatabaseMetadata' => %i[id updated entries schema],
@@ -310,7 +313,8 @@ module VPNDetection
       'DatabaseChecksumsResponse' => %i[id format checksums],
       'DbChecksums' => %i[md5 sha1 sha256 sha512],
       'DownloadList' => %i[downloads],
-      'Download' => %i[dataset_id format outcome sample bytes http_status apikey_id client_ip user_agent created],
+      'Download' => %i[dataset_id format outcome sample open bytes http_status apikey_id client_ip user_agent
+                       created],
     }.freeze
 
     # True when the parsed `value` has the generated `type`, a model's members
