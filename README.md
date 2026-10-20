@@ -23,7 +23,7 @@ Requires Ruby 3.3 or newer.
 
 ## Usage
 
-**No API key needed to start.** The free tier answers `ip` and `is_vpn`, and allows 1000 requests per day per source address.
+**No API key needed to start.** Without a key, a lookup answers `ip` and `is_vpn`, up to 1000 a day per source address.
 
 ```ruby
 require 'vpndetection'
@@ -36,16 +36,17 @@ result.is_vpn   # => true
 
 ### With an API key
 
-An API key raises your quota, and raises your features on a paid plan. Create one in the [console](https://app.vpndetection.io), then pass it in:
+A free key adds Tor and relay detection, where the address is and the AS that announces it. Every paid plan answers every field, the same on each, and the plans differ only in how many lookups they include. Create a key in the [console](https://app.vpndetection.io), then pass it in:
 
 ```ruby
 client = VPNDetection::Client.new(api_key: ENV['VPNDETECTION_API_KEY'])
 
 result = client.lookup('45.83.91.1')
 result.is_vpn               # => true
-result.vpn['provider']      # => "nordvpn"
-result.is_hosting           # => true
-result.hosting['provider']  # => "M247"
+result.location['country']  # the ISO 3166 country code
+result.asn['name']          # who runs the announcing network
+result.vpn['provider']      # => "nordvpn", on a paid plan
+result.is_hosting           # => true, on a paid plan
 ```
 
 ### Your own address
@@ -222,7 +223,7 @@ Check that `state` came back as you sent it before you exchange `code`, which wo
 
 ### Absent is not false
 
-Every field beyond `ip` and `is_vpn` is present when your plan includes it and `nil` when it does not. `nil` means "not in your plan"; `false` means "we checked, and no".
+Without a key only `ip` and `is_vpn` come back, and a free key adds Tor, relay, `location` and `asn`. Every other field is present when your plan includes it and `nil` when it does not. `nil` means "not in your plan"; `false` means "we checked, and no".
 
 ```ruby
 result.hosting?                 # false when absent, for when you only want the flag

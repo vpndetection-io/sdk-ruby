@@ -68,7 +68,7 @@ class ConformanceTest < Minitest::Test
     end
   end
 
-  def test_a_bogon_is_answered_locally_in_the_full_max_shape
+  def test_a_bogon_is_answered_locally_in_the_widest_shape
     calls = stub_lookups({})
     result = VPNDetection::Client.new.lookup('10.0.0.1')
 
@@ -80,6 +80,9 @@ class ConformanceTest < Minitest::Test
     end
     CORPUS['bogonResponse']['emptyObjects'].each do |detail|
       assert_equal({}, result.public_send(detail), "#{detail} must be present and empty")
+    end
+    %w[location asn].each do |object|
+      assert_equal CORPUS['bogonResponse'][object], result.public_send(object), object
     end
     assert_empty calls, 'a bogon must not reach the network'
   end
@@ -111,7 +114,7 @@ class ConformanceTest < Minitest::Test
       (c['expect']['emptyPresent'] || []).each do |field|
         assert_equal({}, result.public_send(field), "#{c['name']}: #{field} must be present and empty")
       end
-      %w[vpn hosting dcproxy pubproxy].each do |detail|
+      %w[vpn hosting dcproxy pubproxy location asn].each do |detail|
         next if c['expect'][detail].nil?
 
         assert_equal c['expect'][detail], result.public_send(detail), "#{c['name']}: #{detail}"

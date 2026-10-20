@@ -32,7 +32,8 @@ module VPNDetection
     end
 
     # The answer a bogon gets, in the full shape the API serves at its widest
-    # plan: every flag present and false, every detail object present and empty.
+    # plan: every flag present and false, every detail object present and empty,
+    # and a location and AS of empty strings and AS 0.
     #
     # `is_bogon` marks it as computed rather than served. Note this is
     # deliberately the WIDEST shape regardless of your plan, so do not infer
@@ -41,6 +42,8 @@ module VPNDetection
       raw = { 'ip' => ip, 'is_bogon' => true }
       Result::FLAGS.each { |flag| raw[flag] = false }
       Result::DETAILS.each { |detail| raw[detail] = {} }
+      raw['location'] = Result::LOCATION.to_h { |member| [member, ''] }
+      raw['asn'] = Result::ASN.to_h { |member| [member, member == 'asn' ? 0 : ''] }
       Result.new(raw, bogon: true)
     end
 

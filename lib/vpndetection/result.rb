@@ -24,6 +24,15 @@ module VPNDetection
 
     DETAILS = %w[vpn hosting relay tor cdn resproxy dcproxy mobproxy pubproxy].freeze
 
+    # Where the address is, and the AS announcing it: every keyed answer carries
+    # both, each member present, an empty string or AS 0 where nothing is known.
+    LOCATION = %w[
+      continent continent_name country country_name timezone currency_code currency_name currency_symbol
+      flag_emoji flag_unicode
+    ].freeze
+
+    ASN = %w[asn name domain type prefix].freeze
+
     # The response exactly as it came off the wire, with its original names.
     # Frozen, because the cache hands this same object to every later caller of
     # the address.
@@ -66,7 +75,7 @@ module VPNDetection
     end
 
     # Whether the address belongs to a hosting or cloud provider, or nil when
-    # your plan does not include it. Starter and above.
+    # your plan does not include it. Every paid plan.
     def is_hosting
       @raw['is_hosting']
     end
@@ -77,7 +86,7 @@ module VPNDetection
     end
 
     # Whether the address is a privacy relay egress, or nil when your plan does
-    # not include it. Starter and above.
+    # not include it. Free and paid plans.
     def is_relay
       @raw['is_relay']
     end
@@ -88,7 +97,7 @@ module VPNDetection
     end
 
     # Whether the address is a Tor node, or nil when your plan does not include
-    # it. Starter and above.
+    # it. Free and paid plans.
     def is_tor
       @raw['is_tor']
     end
@@ -99,7 +108,7 @@ module VPNDetection
     end
 
     # Whether the address belongs to a CDN, or nil when your plan does not
-    # include it. Starter and above.
+    # include it. Every paid plan.
     def is_cdn
       @raw['is_cdn']
     end
@@ -110,7 +119,7 @@ module VPNDetection
     end
 
     # Whether the address was seen in a residential proxy pool, or nil when your
-    # plan does not include it. Scale and above.
+    # plan does not include it. Every paid plan.
     def is_resproxy
       @raw['is_resproxy']
     end
@@ -121,7 +130,7 @@ module VPNDetection
     end
 
     # Whether the address was seen in a datacenter proxy pool, or nil when your
-    # plan does not include it. Scale and above.
+    # plan does not include it. Every paid plan.
     def is_dcproxy
       @raw['is_dcproxy']
     end
@@ -132,7 +141,7 @@ module VPNDetection
     end
 
     # Whether the address was seen in a mobile proxy pool, or nil when your plan
-    # does not include it. Scale and above.
+    # does not include it. Every paid plan.
     def is_mobproxy
       @raw['is_mobproxy']
     end
@@ -144,7 +153,7 @@ module VPNDetection
 
     # Whether a public proxy, one anyone can connect through, listens on the
     # address or sends its traffic out from it, or nil when your plan does not
-    # include it. Scale and above.
+    # include it. Every paid plan.
     def is_pubproxy
       @raw['is_pubproxy']
     end
@@ -154,42 +163,43 @@ module VPNDetection
       @raw['is_pubproxy'] == true
     end
 
-    # Detail for `is_vpn`: provider, last_seen, and on max confidence and method.
+    # Detail for `is_vpn`: provider, last_seen and confidence. Every paid plan.
+    # `method` is deprecated: no plan is answered with it since 2026-10-20.
     def vpn
       @raw['vpn']
     end
 
-    # Detail for `is_hosting`. Scale and above.
+    # Detail for `is_hosting`. Every paid plan.
     def hosting
       @raw['hosting']
     end
 
-    # Detail for `is_relay`. Scale and above.
+    # Detail for `is_relay`. Free and paid plans.
     def relay
       @raw['relay']
     end
 
-    # Detail for `is_tor`. Scale and above.
+    # Detail for `is_tor`. Free and paid plans.
     def tor
       @raw['tor']
     end
 
-    # Detail for `is_cdn`. Scale and above.
+    # Detail for `is_cdn`. Every paid plan.
     def cdn
       @raw['cdn']
     end
 
-    # Detail for `is_resproxy`. Max only.
+    # Detail for `is_resproxy`. Every paid plan.
     def resproxy
       @raw['resproxy']
     end
 
-    # Detail for `is_dcproxy`. Max only.
+    # Detail for `is_dcproxy`. Every paid plan.
     def dcproxy
       @raw['dcproxy']
     end
 
-    # Detail for `is_mobproxy`. Max only.
+    # Detail for `is_mobproxy`. Every paid plan.
     def mobproxy
       @raw['mobproxy']
     end
@@ -198,9 +208,23 @@ module VPNDetection
     # num_proxies, last_seen and last_usable. num_ports is 0 when the address
     # is only an exit and num_proxies 0 when it is only an entry; last_usable is
     # an empty string when no request through a proxy on the address was
-    # answered. Max only.
+    # answered. Every paid plan.
     def pubproxy
       @raw['pubproxy']
+    end
+
+    # Where the address is: continent, country, timezone, the country's
+    # currency and flag, as a wire hash (`result.location['country']`). Free and
+    # paid plans.
+    def location
+      @raw['location']
+    end
+
+    # The AS announcing the address: asn, name, domain, type and prefix, as a
+    # wire hash (`result.asn['name']`), with asn 0 where none does. Free and paid
+    # plans.
+    def asn
+      @raw['asn']
     end
 
     def to_h
