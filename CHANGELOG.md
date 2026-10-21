@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.10.1 - 2026-10-21
+
+### Fixes
+
+- Read a date only in its RFC 3339 form, on a real day ([`e71071e`](https://github.com/vpndetection-io/sdk-ruby/commit/e71071edddf97bcd879605a6ac0240d56b861b15))
+
 ## 5.10.0 - 2026-10-20
 
 ### Features
