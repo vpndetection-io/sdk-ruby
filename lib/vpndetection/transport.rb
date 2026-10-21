@@ -317,6 +317,23 @@ module VPNDetection
                        created],
     }.freeze
 
+    # RFC 3339's full-date, the spec's `date`, and its date-time, the spec's
+    # `date-time`, in the upper case the API sends. Anything else reached the
+    # generated reader's Date.parse or Time.parse, which read "monday" as this
+    # week's, "10:00" as today in the process's zone and 30 February as 2 March,
+    # or a lookup's detail handed it back as served (5.10.0, measured 2026-10-21).
+    RFC3339_DATE = /\A(\d{4})-(\d{2})-(\d{2})\z/
+    RFC3339_DATE_TIME = /\A(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-](\d{2}):(\d{2}))\z/
+
+    # A date in the form its type names, on a day and at a time that exist: an
+    # hour of 24 rolls over the way a missing day does.
+    def self.date?(value, type)
+      m = (type == 'Date' ? RFC3339_DATE : RFC3339_DATE_TIME).match(value)
+      return false unless m && Date.valid_date?(m[1].to_i, m[2].to_i, m[3].to_i)
+
+      type == 'Date' || (m[4].to_i < 24 && m[5].to_i < 60 && m[6].to_i < 60 && m[7].to_i < 24 && m[8].to_i < 60)
+    end
+
     # True when the parsed `value` has the generated `type`, a model's members
     # recursively; raises TypeError naming where it does not. No list entry or
     # map value the spec describes may be null: through 5.9.0 one came back as
@@ -327,7 +344,8 @@ module VPNDetection
 
       typed =
         case type
-        when 'String', 'Date', 'Time' then value.is_a?(String)
+        when 'String' then value.is_a?(String)
+        when 'Date', 'Time' then value.is_a?(String) && date?(value, type)
         when 'Integer' then value.is_a?(Integer)
         when 'Float' then value.is_a?(Numeric)
         when 'Boolean' then [true, false].include?(value)

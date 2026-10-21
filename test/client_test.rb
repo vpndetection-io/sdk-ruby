@@ -204,6 +204,10 @@ class ClientTest < Minitest::Test
     'a count as a string' => { 'pubproxy' => { 'entry' => true, 'num_ports' => '3' } },
     'a null protocol' => { 'pubproxy' => { 'entry' => true, 'protocols' => [nil] } },
     'an ip of 5' => { 'ip' => 5 },
+    # Through 5.10.0 a detail's date came back as served, whatever it was.
+    'a last_seen of "monday"' => { 'vpn' => { 'provider' => 'p', 'last_seen' => 'monday' } },
+    'a last_seen on 30 February' => { 'vpn' => { 'provider' => 'p', 'last_seen' => '2026-02-30' } },
+    'a last_seen with a time' => { 'tor' => { 'last_seen' => '2026-10-20T10:00:00Z' } },
   }.freeze
 
   # Through 5.9.0 a member of the wrong type, or a null the spec does not
@@ -224,6 +228,8 @@ class ClientTest < Minitest::Test
       'a null CIDR' => ENTITLEMENT_BODY.merge('apikey' => apikey.merge('allowed_cidrs' => [nil])),
       'CIDRs of null' => ENTITLEMENT_BODY.merge('apikey' => apikey.merge('allowed_cidrs' => nil)),
       'a tier of 3' => ENTITLEMENT_BODY.merge('plan' => { 'key' => 'max', 'tier' => 3 }),
+      'a window_start of "10:00"' => ENTITLEMENT_BODY.merge('usage' => usage.merge('window_start' => '10:00')),
+      'a window_start with no zone' => ENTITLEMENT_BODY.merge('usage' => usage.merge('window_start' => '2026-09-04T07:00:00')),
     }.each { |name, body| answers["my_entitlement, #{name}"] = [-> { client.my_entitlement }, body] }
     answers.each do |name, (call, body)|
       sent = 0
