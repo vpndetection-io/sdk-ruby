@@ -513,14 +513,36 @@ class ClientTest < Minitest::Test
     assert_body_bounded(trickle: 0.02)
   end
 
+  # A key of blanks alone is no key: through 5.10.1 `'   '` and a tab went out
+  # as `Authorization: Bearer`.
   def test_a_keyless_client_presents_no_credential_at_all
-    request = VPNDetection::Transport.new(VPNDetection::Transport::Config.new).lookup_request('1.1.1.1')
+    [nil, '', '   ', "\t", " \n"].each do |api_key|
+      config = VPNDetection::Transport::Config.new(api_key: api_key)
+      request = VPNDetection::Transport.new(config).lookup_request('1.1.1.1')
 
-    # The generated Configuration would apply all three schemes at once, and an
-    # empty `Authorization: Bearer ` is answered with a 401.
-    refute request.options[:headers].key?('Authorization')
-    refute request.options[:headers].key?('X-Api-Key')
-    assert_empty request.options[:params]
+      # The generated Configuration would apply all three schemes at once, and an
+      # empty `Authorization: Bearer ` is answered with a 401.
+      refute request.options[:headers].key?('Authorization'), api_key.inspect
+      refute request.options[:headers].key?('X-Api-Key')
+      assert_empty request.options[:params]
+    end
+  end
+
+  def test_a_key_is_sent_without_the_blanks_around_it
+    config = VPNDetection::Transport::Config.new(api_key: " secret\n")
+    request = VPNDetection::Transport.new(config).lookup_request('1.1.1.1')
+
+    assert_equal 'Bearer secret', request.options[:headers]['Authorization']
+  end
+
+  # Through 5.10.1 curl sent a control character on: a key ending in a CR LF and
+  # `X-Injected: 1` put that header on the wire.
+  def test_a_key_with_a_control_character_is_refused_where_it_is_set
+    ["k\r\nX-Injected: 1", "k\ny", "k\u0000y", "k\ty", "k\u007fy", "k\u0085y"].each do |api_key|
+      error = assert_raises(ArgumentError, api_key.inspect) { VPNDetection::Client.new(api_key: api_key) }
+
+      refute_includes error.message, api_key, 'the key is a secret'
+    end
   end
 
   def test_an_api_key_is_presented_as_a_bearer_token

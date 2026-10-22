@@ -25,7 +25,7 @@ module VPNDetection
 
     # @param api_key [String, nil] omit it entirely to use the free tier, which
     #   answers `ip` and `is_vpn` and allows 1000 requests per day per source
-    #   address.
+    #   address. It is trimmed, and a key of blanks alone is no key.
     # @param cache [Boolean] pass false to disable caching.
     # @param cache_ttl [Numeric] how long an answer stays fresh, in seconds.
     # @param concurrency [Integer] batch requests - chunks of up to 1000 addresses - in flight during a batch.
@@ -37,6 +37,7 @@ module VPNDetection
     #   longer in total, and every call that takes `retries:` also takes
     #   `timeout:` to override it. A dataset transfer bounds only its connect
     #   phase with it.
+    # @raise [ArgumentError] for an `api_key` with a control character in it.
     # @raise [ArgumentError] for a `timeout`, here or on any call, that is
     #   negative, not a finite number, or past 2147483.647 seconds (2**31 - 1 ms),
     #   the longest curl holds.

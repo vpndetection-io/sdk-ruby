@@ -34,6 +34,20 @@ module VPNDetection
             "timeout must be a number of seconds from 0 (no bound) to #{LONGEST_TIMEOUT}, not #{timeout.inspect}"
     end
 
+    # The key as sent: trimmed, and nil when nothing is left. Through 5.10.1 a key
+    # of blanks went out as `Authorization: Bearer` and a padded one padded, and
+    # curl passed a control character on, so a key ending in a CR LF and a line
+    # of its own wrote that line onto the wire as a header. Refused where it is
+    # set, without the key in the message, since the key is a secret.
+    def self.checked_key(api_key)
+      return nil if api_key.nil?
+
+      key = api_key.to_s.strip
+      raise ArgumentError, 'api_key must not contain a control character' if key.match?(/[[:cntrl:]]/)
+
+      key.empty? ? nil : key
+    end
+
     # The generated Configuration applies EVERY security scheme the spec lists,
     # so a keyless client would send `Authorization: Bearer `, an empty
     # `X-Api-Key` and an empty `apikey` query parameter. The API answers 401 to
@@ -45,17 +59,18 @@ module VPNDetection
         self.scheme = uri.scheme
         self.host = uri.port == uri.default_port ? uri.host : "#{uri.host}:#{uri.port}"
         self.base_path = uri.path
-        self.access_token = api_key
+        self.access_token = Transport.checked_key(api_key)
         self.timeout = timeout.nil? ? nil : Transport.checked_timeout(timeout)
       end
 
       def auth_settings
-        return {} if access_token.nil? || access_token.to_s.empty?
+        token = access_token.to_s.strip
+        return {} if token.empty?
 
         {
           'bearerAuth' => {
             type: 'bearer', in: 'header', key: 'Authorization',
-            value: "Bearer #{access_token}"
+            value: "Bearer #{token}"
           }
         }
       end
