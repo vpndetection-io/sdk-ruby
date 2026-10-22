@@ -26,14 +26,17 @@ fi
 
 push="gem push /tmp/build/pkg/*.gem"
 if [ -n "$DRY_RUN" ] ; then
-    push="gem spec /tmp/build/pkg/*.gem name version files | head -20"
+    # gem spec prints one field per call: given three, it printed the name alone.
+    push="gem spec /tmp/build/pkg/*.gem name && gem spec /tmp/build/pkg/*.gem version && gem spec /tmp/build/pkg/*.gem files | head -20"
 fi
 
 # The working tree is mounted READ ONLY and copied inside, so bundler cannot
-# leave a root-owned Gemfile.lock, .bundle or built .gem behind in it.
+# leave a root-owned Gemfile.lock, .bundle or built .gem behind in it. The key
+# reaches docker by NAME: a value on its command line is visible to ps.
+export GEM_HOST_API_KEY="${GEM_HOST_API_KEY:-}"
 docker run --rm \
     -v "$PWD:/src:ro" \
-    -e GEM_HOST_API_KEY="${GEM_HOST_API_KEY:-}" \
+    -e GEM_HOST_API_KEY \
     "$RUBY_IMAGE" bash -euc "
         cp -R /src /tmp/build
         cd /tmp/build
