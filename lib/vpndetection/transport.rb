@@ -179,11 +179,13 @@ module VPNDetection
     #
     # The form is encoded here rather than by curl, so a `+` in a value leaves as
     # `%2B` and never arrives as a space.
-    def oauth_request(http_method, path, form: nil, timeout: nil)
+    def oauth_request(http_method, path, form: nil, json: nil, timeout: nil)
       headers = { 'Accept' => 'application/json' }
       headers['Content-Type'] = 'application/x-www-form-urlencoded' unless form.nil?
+      headers['Content-Type'] = 'application/json' unless json.nil?
       request = build_request(http_method, path, header_params: headers, auth_names: [], timeout: timeout)
       request.options[:body] = URI.encode_www_form(form) unless form.nil?
+      request.options[:body] = JSON.generate(json) unless json.nil?
       request
     end
 

@@ -36,6 +36,7 @@ module VPNDetection
     TOKEN_PATH = '/oauth/token'
     REVOKE_PATH = '/oauth/revoke'
     AUTHORIZE_PATH = '/oauth/authorize'
+    REGISTER_PATH = '/oauth/register'
     DEVICE_CODE_GRANT = 'urn:ietf:params:oauth:grant-type:device_code'
     # The longest single `sleep` the poll asks Ruby for, in seconds.
     LONGEST_SLEEP = 2**31 - 1
@@ -45,6 +46,7 @@ module VPNDetection
       OauthMetadata => %i[issuer authorization_endpoint token_endpoint],
       DeviceAuthorization => %i[device_code user_code verification_uri expires_in interval],
       TokenResponse => %i[access_token token_type expires_in],
+      ClientRegistration => %i[client_id client_id_issued_at client_name redirect_uris token_endpoint_auth_method],
     }.freeze
 
     def initialize(transport, retries:)
@@ -151,6 +153,31 @@ module VPNDetection
       [Digest::SHA256.digest(verifier)].pack('m0').tr('+/', '-_').delete('=')
     end
 
+    # Register a client for the authorization code flow, for an app that cannot
+    # serve a Client ID Metadata Document, and get its `client_id` for
+    # {#authorization_url} and {#exchange_authorization_code}.
+    #
+    # Each redirect URI must be https on a public host name, or http on a
+    # loopback address, which then matches on any port; the server refuses any
+    # other with {OauthRequestError} coded `invalid_redirect_uri`. Nothing is kept
+    # until a person approves the client, so registering again costs nothing, and
+    # this is retried like a read. No URI at all, or one that is empty or not
+    # UTF-8, raises ArgumentError before anything is sent.
+    #
+    # @param client_name [String, nil] shown to the person as the client's own
+    #   claim; left out when empty.
+    # @return [ClientRegistration]
+    def register(redirect_uris, client_name: nil, timeout: nil)
+      raise ArgumentError, 'redirect_uris must list at least one URI' unless redirect_uris.is_a?(Array) && !redirect_uris.empty?
+
+      body = { 'redirect_uris' => redirect_uris.each_with_index.map { |uri, i| utf8!("redirect_uris[#{i}]", uri) } }
+      name = client_name.nil? ? '' : utf8!('client_name', client_name, empty: true)
+      body['client_name'] = name unless name.empty?
+      Retries.with_retries(@retries) do
+        decode(ClientRegistration, @transport.oauth_request(:POST, REGISTER_PATH, json: body, timeout: timeout).run)
+      end
+    end
+
     # Revoke an access or refresh token. A refresh token ends the whole grant and
     # every token it issued, which is how a machine signs out.
     #
@@ -222,6 +249,18 @@ module VPNDetection
       raise ArgumentError, "#{name} is not valid UTF-8" unless value.encode(Encoding::UTF_8).valid_encoding?
 
       value.encode(Encoding::UTF_8).b.gsub(/[^A-Za-z0-9\-._~]/n) { |byte| format('%%%02X', byte.ord) }
+    rescue EncodingError
+      raise ArgumentError, "#{name} is not valid UTF-8"
+    end
+
+    def utf8!(name, value, empty: false)
+      raise ArgumentError, "#{name} must be a String" unless value.is_a?(String)
+      raise ArgumentError, "#{name} must not be empty" if value.empty? && !empty
+
+      utf8 = value.encode(Encoding::UTF_8)
+      raise ArgumentError, "#{name} is not valid UTF-8" unless utf8.valid_encoding?
+
+      utf8
     rescue EncodingError
       raise ArgumentError, "#{name} is not valid UTF-8"
     end

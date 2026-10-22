@@ -232,11 +232,95 @@ class OauthTest < Minitest::Test
     refute_includes first.inspect, first.verifier
   end
 
+  def test_register_posts_exactly_its_json_body_and_refuses_an_empty_uri_unsent
+    register = OAUTH['register']
+    served = register['responses']['cases'].first
+    register['bodies']['cases'].each do |c|
+      @origin&.stop
+      @origin = OauthOrigin.new([served])
+      api = VPNDetection::Client.new(base_url: "#{@origin.base_url}///", timeout: 2).oauth
+      options = c['args'].key?('clientName') ? { client_name: c['args']['clientName'] } : {}
+
+      kind, value = bounded { api.register(c['args']['redirectUris'], **options, timeout: 5) }
+
+      assert_equal :ok, kind, "#{c['name']}: #{value.inspect}"
+      seen = @origin.requests
+      assert_equal 1, seen.length, c['name']
+      assert_equal register['endpoint']['path'], seen.first.path, c['name']
+      assert seen.first.headers['content-type'].start_with?(register['contentType']), c['name']
+      assert_equal c['body'], JSON.parse(seen.first.body), c['name']
+    end
+    refused = register['refusals']['cases'].map { |c| c['args']['redirectUris'] }
+    refused += [["http://127.0.0.1/cb\xff".dup.force_encoding('UTF-8')], 'http://127.0.0.1/cb', nil]
+    refused.each do |uris|
+      api = keyless([served]).oauth
+
+      kind, value = bounded { api.register(uris) }
+
+      assert_equal :error, kind, uris.inspect
+      assert_kind_of ArgumentError, value, uris.inspect
+      assert_empty @origin.requests, uris.inspect
+    end
+  end
+
+  def test_register_decodes_on_presence_and_reads_anything_unreadable_as_a_server_error
+    register = OAUTH['register']
+    uris = ['http://127.0.0.1/cb']
+    register['responses']['cases'].each do |c|
+      kind, value = bounded { keyless([c]).oauth.register(uris) }
+
+      assert_equal :ok, kind, "#{c['name']}: #{value.inspect}"
+      c['expect']['present'].each { |member, expected| assert_equal expected, value.public_send(member), "#{c['name']}: #{member}" }
+      c['expect']['absent'].each { |member| assert_nil value.public_send(member), "#{c['name']}: #{member}" }
+    end
+    register['unreadable']['cases'].each do |c|
+      @origin&.stop
+      @origin = OauthOrigin.new([c])
+      api = VPNDetection::Client.new(base_url: @origin.base_url, timeout: 2, retries: 0).oauth
+
+      kind, error = bounded { api.register(uris) }
+
+      assert_equal :error, kind, c['name']
+      assert_error_type('client', error, c['name'])
+      assert_equal 'server_error', error.kind.to_s, c['name']
+      assert_equal c['status'], error.status, c['name']
+      assert_equal 1, @origin.requests.length, c['name']
+    end
+    register['errors'].each do |c|
+      kind, error = bounded { keyless([c]).oauth.register(uris) }
+
+      assert_equal :error, kind, c['name']
+      expect = c['expect']
+      assert_error_type(expect['type'], error, c['name'])
+      assert_equal expect['status'], error.status, "#{c['name']}: status"
+      assert_equal expect['kind'], error.kind.to_s, "#{c['name']}: kind"
+      next if expect['type'] == 'client'
+
+      assert_equal expect['errorCode'], error.error_code, "#{c['name']}: error_code"
+      assert_equal expect['message'], error.message, "#{c['name']}: message"
+    end
+    register['retries'].each do |c|
+      @origin&.stop
+      @origin = OauthOrigin.new(c['responses'])
+      api = VPNDetection::Client.new(base_url: @origin.base_url, timeout: 2).oauth
+
+      kind, value = bounded { api.register(c['args']['redirectUris']) }
+
+      assert_equal c['expect']['requests'], @origin.requests.length, "#{c['name']}: requests"
+      if c['expect']['outcome'] == 'ok'
+        assert_equal :ok, kind, "#{c['name']}: #{value.inspect}"
+      else
+        assert_error_type(c['expect']['outcome'], value, c['name'])
+        assert_equal c['expect']['errorCode'], value.error_code, c['name']
+      end
+    end
+  end
+
   def test_no_oauth_request_carries_the_api_key
     rule = OAUTH['noCredential']
     token = success_for('token')
     @origin = OauthOrigin.new([success_for('metadata'), success_for('deviceAuthorization'), token, token,
-                               token, success_for('revoke'), token])
+                               token, success_for('revoke'), token, OAUTH['register']['responses']['cases'].first])
     client = VPNDetection::Client.new(api_key: rule['apiKey'], base_url: @origin.base_url, timeout: 2,
                                       cache: false)
     api = client.oauth
@@ -251,13 +335,14 @@ class OauthTest < Minitest::Test
         api.exchange_authorization_code(CLIENT_ID, 'mo_ac_x', 'v' * 43, 'http://127.0.0.1/cb')
         api.revoke(CLIENT_ID, 'mo_rt_x')
         api.poll_device_token(CLIENT_ID, device)
+        api.register(['http://127.0.0.1/cb'], client_name: 'Example CLI')
       end
     end
 
     assert_equal :ok, outcome.first, outcome.last.inspect
     refute_match(/deprecated/, printed, 'the accessor went through a deprecated class')
     seen = @origin.requests
-    assert_equal 7, seen.length
+    assert_equal 8, seen.length
     url = api.authorization_url(CLIENT_ID, 'http://127.0.0.1/cb', 'c' * 43)
     refute_includes url, rule['apiKey'], 'the authorization URL carried the API key'
     seen.each do |request|
