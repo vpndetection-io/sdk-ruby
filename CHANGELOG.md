@@ -2,6 +2,16 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.11.0 - 2026-10-22
+
+### Features
+
+- Add oauth.register, for RFC 7591 dynamic client registration ([`49ddcd4`](https://github.com/vpndetection-io/sdk-ruby/commit/49ddcd4923cfda3d7d4fcfe2df147016324dddbf))
+
+### Fixes
+
+- Send a key without the blanks around it, and refuse a control character ([`3411f58`](https://github.com/vpndetection-io/sdk-ruby/commit/3411f588343df3c624cc6d3fc52e5369b4429483))
+
 ## 5.10.1 - 2026-10-21
 
 ### Fixes
