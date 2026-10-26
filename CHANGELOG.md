@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.11.1 - 2026-10-26
+
+### Fixes
+
+- Re-pin the spec to 2026.10.25: Retry-After on myip's 429 ([`a6a6933`](https://github.com/vpndetection-io/sdk-ruby/commit/a6a69335a8091ce386cf1a5d11961006351f8c36))
+
 ## 5.11.0 - 2026-10-22
 
 ### Features
