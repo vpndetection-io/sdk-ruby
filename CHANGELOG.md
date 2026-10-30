@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.11.2 - 2026-10-30
+
+### Fixes
+
+- Read a lowercase t or z in a date-time ([`08ac73d`](https://github.com/vpndetection-io/sdk-ruby/commit/08ac73d5d2475cba851d96e5604a72b3e51d53be))
+
 ## 5.11.1 - 2026-10-26
 
 ### Fixes
