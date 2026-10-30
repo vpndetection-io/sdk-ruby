@@ -629,6 +629,18 @@ class ClientTest < Minitest::Test
     assert_empty ent.apikey.allowed_cidrs
   end
 
+  # RFC 3339 lets a date-time's T and Z be lowercase; through 5.11.1 one failed the call.
+  def test_my_entitlement_reads_a_lowercase_t_or_z
+    usage = ENTITLEMENT_BODY['usage'].merge('window_start' => '2026-09-04t07:00:00Z', 'window_end' => '2026-10-04T07:00:00z')
+    apikey = ENTITLEMENT_BODY['apikey'].merge('expires' => '2027-01-01t00:00:00.5z')
+    stub_lookups('api/v1/entitlement' => { body: ENTITLEMENT_BODY.merge('usage' => usage, 'apikey' => apikey) })
+    ent = VPNDetection::Client.new.my_entitlement
+
+    assert_equal '2026-09-04T07:00:00Z', ent.usage.window_start.utc.iso8601
+    assert_equal '2026-10-04T07:00:00Z', ent.usage.window_end.utc.iso8601
+    assert_equal '2027-01-01T00:00:00.500Z', ent.apikey.expires.utc.iso8601(3)
+  end
+
   def test_my_entitlement_is_not_cached
     # The whole point is what has been spent.
     calls = stub_lookups('api/v1/entitlement' => { body: ENTITLEMENT_BODY })

@@ -367,6 +367,8 @@ class DatabaseTest < Minitest::Test
       'a starts at 24:00' => ['/api/v1/database/list', { 'databases' => [FAMILY.merge('starts' => '2026-09-04T24:00:00Z')] }],
       'a starts with no zone' => ['/api/v1/database/list', { 'databases' => [FAMILY.merge('starts' => '2026-09-04T10:00:00')] }],
       'a created of "Oct 5"' => ['/api/v1/database/downloads', { 'downloads' => [DOWNLOAD.merge('created' => 'Oct 5')] }],
+      'a starts ending in a newline' => ['/api/v1/database/list', { 'databases' => [FAMILY.merge('starts' => "2026-09-04T10:00:00Z\n")] }],
+      'an updated ending in a newline' => ['/api/v1/database/metadata', METADATA.merge('updated' => "2026-09-04\n")],
     }
     calls = {
       '/api/v1/database/list' => ->(c) { c.database.list },
@@ -408,6 +410,21 @@ class DatabaseTest < Minitest::Test
       stub_database(path, 200, body)
 
       assert_equal expected, read.call(@client), path
+    ensure
+      Typhoeus::Expectation.clear
+    end
+  end
+
+  # RFC 3339 lets a date-time's T and Z be lowercase, and through 5.11.1 one in
+  # that case failed the call as an unreadable answer.
+  def test_a_lowercase_t_or_z_in_a_date_time_reads
+    ['2026-09-04t10:00:00Z', '2026-09-04T10:00:00z', '2026-09-04t10:00:00.5z'].each do |value|
+      stub_database('/api/v1/database/list', 200, { 'databases' => [FAMILY.merge('starts' => value)] })
+      stub_database('/api/v1/database/downloads', 200, { 'downloads' => [DOWNLOAD.merge('created' => value)] })
+      want = value.include?('.') ? '2026-09-04T10:00:00.500Z' : '2026-09-04T10:00:00.000Z'
+
+      assert_equal want, @client.database.list.first.starts.utc.iso8601(3), value
+      assert_equal want, @client.database.downloads.first.created.utc.iso8601(3), value
     ensure
       Typhoeus::Expectation.clear
     end
