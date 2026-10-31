@@ -15,6 +15,15 @@ module VPNDetection
 
     module_function
 
+    # `retries`, once it is a count. Refused where it is set: unchecked, -1 and
+    # NaN read as none, 1.5 as two, Infinity retried a failing call for good, and
+    # a String or nil raised a raw ArgumentError out of every failing call.
+    def checked_count(retries)
+      return retries if retries.is_a?(Integer) && retries >= 0
+
+      raise ArgumentError, "retries must be an Integer from 0, not #{retries.inspect}"
+    end
+
     # `retry_if`, when given, is asked after each retryable failure, and a false
     # answer ends the attempts there.
     def with_retries(retries, retry_if: nil)

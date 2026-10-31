@@ -161,7 +161,7 @@ client = VPNDetection::Client.new(timeout: 10, retries: 4)
 result = client.lookup('45.83.91.1', timeout: 2, retries: 0)
 ```
 
-`timeout` is in seconds and bounds each attempt, body included, so a call that is retried can take longer in total. It defaults to 30 seconds, and 0 means no bound; before 5.2.0 the default was 10, so pass `timeout: 10` to keep that bound. The client's values are defaults: `lookup`, `lookup_batch`, `my_ip` and `my_entitlement` each take `timeout:` and `retries:` for that call alone, and every `client.oauth` method and every `client.database` call that is not a transfer takes `timeout:` (from 5.3.0). A database download bounds only its connection with it, because a whole transfer can take minutes. A negative value, anything that isn't a number, and anything past 2147483.647 seconds (the longest curl holds) raise `ArgumentError` where you pass them, before any request.
+`timeout` is in seconds and bounds each attempt, body included, so a call that is retried can take longer in total. It defaults to 30 seconds, and 0 means no bound; before 5.2.0 the default was 10, so pass `timeout: 10` to keep that bound. The client's values are defaults: `lookup`, `lookup_batch`, `my_ip` and `my_entitlement` each take `timeout:` and `retries:` for that call alone, and every `client.oauth` method and every `client.database` call that is not a transfer takes `timeout:` (from 5.3.0). A database download bounds only its connection with it, because a whole transfer can take minutes. A negative value, anything that isn't a number, and anything past 2147483.647 seconds (the longest curl holds) raise `ArgumentError` where you pass them, before any request. So does a `retries` that isn't an Integer from 0 (from 5.11.3).
 
 ### Database downloads
 

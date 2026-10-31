@@ -475,6 +475,37 @@ class ClientTest < Minitest::Test
     assert_empty calls, 'no refused timeout reached the network'
   end
 
+  # Through 5.11.2 any value was taken: -1 and NaN read as no retries, 1.5 as
+  # two, Infinity retried a failing call for good, a String or nil raised a raw
+  # ArgumentError out of the failing call, and a bogon answered it per call.
+  def test_a_retry_count_is_refused_where_it_is_set
+    calls = stub_lookups('8.8.8.8' => { body: OK_BODY.merge('ip' => '8.8.8.8') })
+    client = VPNDetection::Client.new
+    client.lookup('8.8.8.8')
+    calls.clear
+
+    [-1, Float::NAN, 1.5, Float::INFINITY, '2', true].each do |value|
+      assert_raises(ArgumentError, "Client.new, retries #{value.inspect}") { VPNDetection::Client.new(retries: value) }
+      assert_raises(ArgumentError, "the middleware, retries #{value.inspect}") do
+        VPNDetection::Middleware::Core.new(->(_) {}, client: client, retries: value)
+      end
+      {
+        'a bogon' => -> { client.lookup('10.0.0.1', retries: value) },
+        'a cached address' => -> { client.lookup('8.8.8.8', retries: value) },
+        'an address to look up' => -> { client.lookup('9.9.9.9', retries: value) },
+        'a batch' => -> { client.lookup_batch(['10.0.0.1', '8.8.8.8', '9.9.9.9'], retries: value) },
+        'a batch answered locally' => -> { client.lookup_batch(['10.0.0.1', '8.8.8.8'], retries: value) },
+        'my_ip' => -> { client.my_ip(retries: value) },
+        'my_entitlement' => -> { client.my_entitlement(retries: value) },
+      }.each do |name, call|
+        assert_raises(ArgumentError, "#{name}, retries #{value.inspect}") { call.call }
+      end
+    end
+    assert_raises(ArgumentError, 'Client.new, retries nil') { VPNDetection::Client.new(retries: nil) }
+    assert_empty calls, 'no refused count reached the network'
+    assert_equal '8.8.8.8', client.lookup('8.8.8.8', retries: nil).ip, 'nil per call is the client default'
+  end
+
   # A chunk's retry waits on the same bound as a single call's (measured on
   # 5.4.1: 2147484 held the batch, and 9223372036854775807 and 1e400 raised a
   # raw RangeError out of `sleep`). 1e400 is not seconds from 5.6.2.

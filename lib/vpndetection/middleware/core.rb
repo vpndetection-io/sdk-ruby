@@ -40,6 +40,7 @@ module VPNDetection
         @skip = options[:skip]
         @on_warn = options[:on_warn]
         @retries = options.fetch(:retries, DEFAULT_RETRIES)
+        Retries.checked_count(@retries) unless @retries.nil?
         @warned = {}
         @client = options[:client] || Client.new(
           api_key: options[:api_key],

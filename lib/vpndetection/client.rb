@@ -29,9 +29,9 @@ module VPNDetection
     # @param cache [Boolean] pass false to disable caching.
     # @param cache_ttl [Numeric] how long an answer stays fresh, in seconds.
     # @param concurrency [Integer] batch requests - chunks of up to 1000 addresses - in flight during a batch.
-    # @param retries [Integer] extra attempts for a transient failure. Each waits
-    #   the server's `Retry-After` when it sent one of at most about 24.8 days,
-    #   and otherwise a backoff of 250 ms that doubles per retry.
+    # @param retries [Integer] extra attempts for a transient failure, from 0. Each
+    #   waits the server's `Retry-After` when it sent one of at most about 24.8
+    #   days, and otherwise a backoff of 250 ms that doubles per retry.
     # @param timeout [Numeric] seconds one request may take before it is
     #   abandoned, 0 for no bound. Applies per ATTEMPT, so a retried call may take
     #   longer in total, and every call that takes `retries:` also takes
@@ -40,12 +40,14 @@ module VPNDetection
     # @raise [ArgumentError] for an `api_key` with a control character in it.
     # @raise [ArgumentError] for a `timeout`, here or on any call, that is
     #   negative, not a finite number, or past 2147483.647 seconds (2**31 - 1 ms),
-    #   the longest curl holds.
+    #   the longest curl holds, and for a `retries`, here or on any call, that is
+    #   not an Integer from 0.
     # @param transport [Transport, nil] override the HTTP layer, mostly for tests.
     def initialize(api_key: nil, base_url: DEFAULT_BASE_URL, cache: true,
                    cache_max_size: DEFAULT_CACHE_MAX_SIZE, cache_ttl: DEFAULT_CACHE_TTL,
                    concurrency: DEFAULT_CONCURRENCY, retries: DEFAULT_RETRIES,
                    timeout: DEFAULT_TIMEOUT, transport: nil)
+      retries = Retries.checked_count(retries)
       @transport = transport || Transport.new(
         Transport::Config.new(api_key: api_key, base_url: base_url, timeout: timeout),
       )
@@ -80,6 +82,7 @@ module VPNDetection
     def lookup(ip, retries: nil, timeout: nil)
       # Here as well as in the transport: a bogon or a cached answer returns before any request.
       Transport.checked_timeout(timeout) unless timeout.nil?
+      Retries.checked_count(retries) unless retries.nil?
       # Judged, cached and sent as the IPv4 address it carries, if it is mapped.
       ip = Bogon.unmapped(ip)
       return Bogon.result(ip) if Bogon.bogon?(ip)
@@ -117,6 +120,7 @@ module VPNDetection
     # this is IS the question: a machine that moves between networks would
     # otherwise be told where it used to be.
     def my_ip(retries: nil, timeout: nil)
+      Retries.checked_count(retries) unless retries.nil?
       Retries.with_retries(retries || @retries) do
         Transport.lookup_result(@transport.myip_request(timeout: timeout).run)
       end
@@ -142,6 +146,7 @@ module VPNDetection
     #
     # @return [Entitlement]
     def my_entitlement(retries: nil, timeout: nil)
+      Retries.checked_count(retries) unless retries.nil?
       Retries.with_retries(retries || @retries) do
         Transport.entitlement_result(@transport.entitlement_request(timeout: timeout).run)
       end
@@ -169,6 +174,7 @@ module VPNDetection
         raise Error.new(:bad_request, "concurrency must be at least 1, not #{limit.inspect}")
       end
       Transport.checked_timeout(timeout) unless timeout.nil?
+      Retries.checked_count(retries) unless retries.nil?
 
       # An IPv4-mapped address is sent as the address it carries, once however
       # many of its spellings were asked, and answered under each one asked.
