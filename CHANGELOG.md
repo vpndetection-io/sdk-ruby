@@ -2,6 +2,13 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.11.3 - 2026-10-31
+
+### Fixes
+
+- Refuse a retries that is not an Integer from 0, where it is set ([`9237c04`](https://github.com/vpndetection-io/sdk-ruby/commit/9237c046770a68c8b2a04abea5b5399e774f5af6))
+- Read a database sample row only as an object ([`60e23a9`](https://github.com/vpndetection-io/sdk-ruby/commit/60e23a93327d6c0440b53e192cfbd90f4470233f))
+
 ## 5.11.2 - 2026-10-30
 
 ### Fixes
