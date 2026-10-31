@@ -367,7 +367,9 @@ module VPNDetection
         when 'Integer' then value.is_a?(Integer)
         when 'Float' then value.is_a?(Numeric)
         when 'Boolean' then [true, false].include?(value)
-        when 'Object' then true
+        # The spec's `type: object`, a sample row: through 5.11.2 a row of 1, "x"
+        # or [] came back as the answer.
+        when 'Object' then value.is_a?(Hash)
         when /\AArray<(?<inner>.+)>\z/
           inner = Regexp.last_match(:inner)
           value.is_a?(Array) && value.each_with_index.all? { |v, i| check_type!(v, inner, "#{where}[#{i}]") }

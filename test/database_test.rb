@@ -354,6 +354,11 @@ class DatabaseTest < Minitest::Test
       'a size of null' => ['/api/v1/database/metadata', METADATA.merge('size' => { 'csvgz' => nil })],
       'a null column' => ['/api/v1/database/metadata', METADATA.merge('schema' => { 'csvgz' => [nil] })],
       'a null sample row' => ['/api/v1/database/metadata', METADATA.merge('sample' => { 'csvgz' => [nil] })],
+      # The spec's sample row is an object, and through 5.11.2 any row came back.
+      'a sample row of 1' => ['/api/v1/database/metadata', METADATA.merge('sample' => { 'csvgz' => [1] })],
+      'a sample row of "x"' => ['/api/v1/database/metadata', METADATA.merge('sample' => { 'csvgz' => ['x'] })],
+      'a sample row of []' => ['/api/v1/database/metadata', METADATA.merge('sample' => { 'csvgz' => [[]] })],
+      'a sample row of true' => ['/api/v1/database/metadata', METADATA.merge('sample' => { 'csvgz' => [true] })],
       'a sha256 of 5' => ['/api/v1/database/checksum', { 'id' => 'vpn_ip_extended_v1', 'format' => 'csvgz', 'checksums' => CHECKSUMS.merge('sha256' => 5) }],
       'bytes of "10"' => ['/api/v1/database/downloads', { 'downloads' => [DOWNLOAD.merge('bytes' => '10')] }],
       'downloads of null' => ['/api/v1/database/downloads', { 'downloads' => nil }],
