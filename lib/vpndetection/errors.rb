@@ -53,7 +53,7 @@ module VPNDetection
       when 401 then :unauthorized
       when 403 then :forbidden
       # Every other 4xx is a CLIENT error. Classifying on the RANGE rather than
-      # on an enumerated list is what keeps a 404 from a bad dataset id falling
+      # on an enumerated list is what keeps a 404 from a bad dataset ID falling
       # through to the retryable server_error default and being retried twice
       # before it fails.
       when 400..499 then :bad_request

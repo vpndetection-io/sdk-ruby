@@ -6,7 +6,7 @@
 #
 # The transfer is budgeted before it starts. Metadata publishes a size per
 # format, and that size is checked against the ceiling below FIRST, so a mistaken
-# dataset id can never quietly pull one of the gigabyte datasets through CI.
+# dataset ID can never quietly pull one of the gigabyte datasets through CI.
 
 require 'digest'
 require 'fileutils'
@@ -23,7 +23,7 @@ class DatabaseTest < Minitest::Test
   # tripping it means the suite is pointed somewhere unintended, which is exactly
   # when a transfer must not go ahead.
   CEILING = 8 * 1024 * 1024
-  # A real catalogue id the max organization holds no license for.
+  # A real catalogue ID the max organization holds no license for.
   UNLICENSED_ID = 'hosting_ip_v1'
   HEX_DIGEST = /\A[0-9a-f]{64}\z/
 
