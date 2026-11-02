@@ -5,7 +5,7 @@ module VPNDetection
   #
   # Only a 5xx, a transport failure and a 429 that carried `Retry-After` are
   # worth another attempt. Every other 4xx is a client error and fails on the
-  # first try, so a bad dataset id is not asked for three times.
+  # first try, so a bad dataset ID is not asked for three times.
   module Retries
     BACKOFF_SECONDS = 0.25
 

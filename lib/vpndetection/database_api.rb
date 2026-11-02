@@ -22,7 +22,7 @@ module VPNDetection
     # The database FAMILIES your organization is licensed to download.
     #
     # A license is held against the family, while a download names one version,
-    # so the ids {#download}, {#download_bytes}, {#download_url} and {#checksums}
+    # so the IDs {#download}, {#download_bytes}, {#download_url} and {#checksums}
     # take come from each family's `versions`, not from the family itself.
     #
     # @param timeout [Numeric, nil] seconds this attempt may take, for THIS call only.

@@ -165,7 +165,7 @@ result = client.lookup('45.83.91.1', timeout: 2, retries: 0)
 
 ### Database downloads
 
-If your key carries the `db.download` scope, the licensed databases are available through `client.database`. A license covers a database FAMILY and a download names one of its versions, so the id comes from `versions`:
+If your key carries the `db.download` scope, the licensed databases are available through `client.database`. A license covers a database FAMILY and a download names one of its versions, so the ID comes from `versions`:
 
 ```ruby
 family = client.database.list.first
