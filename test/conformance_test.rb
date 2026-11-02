@@ -216,7 +216,7 @@ class ConformanceTest < Minitest::Test
     c = corpus_batch('an-entry-error-is-classified-by-its-status')
     calls = stub_lookups(
       '1.1.1.1' => { body: { 'ip' => '1.1.1.1', 'is_vpn' => false } },
-      '8.8.8.8' => { status: 429, body: { 'error' => 'request allowance exceeded; raise or remove your overage limit' } },
+      '8.8.8.8' => { status: 429, body: { 'error' => 'monthly request allowance spent; upgrade your plan for more lookups' } },
       '9.9.9.9' => { status: 500, body: { 'error' => 'lookup failed' } },
     )
     got = VPNDetection::Client.new(retries: 3).lookup_batch(c['input'])
