@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.11.4 - 2026-11-03
+
+### Fixes
+
+- Refuse a concurrency that is not an Integer from 1, where it is set ([`27155a9`](https://github.com/vpndetection-io/sdk-ruby/commit/27155a9b3e4e7384203d676629d41dc9c782e1f5))
+
 ## 5.11.3 - 2026-10-31
 
 ### Fixes
