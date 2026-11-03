@@ -146,7 +146,7 @@ module VPNDetection
 
     # Reveal
     # Returns an existing key's secret.  Its own scope rather than part of `apikeys.manage`, because the two are different acts: rotating replaces a secret you never see, while this hands one over.  Refused with `NOT_RETRIEVABLE` for a key issued before this product stored secrets recoverably - that secret was never kept, so no retry will ever produce it. Rotate the key instead. 
-    # @param id [String] The key&#39;s id, as returned by the list endpoint. Never the key itself.
+    # @param id [String] The key&#39;s ID, as returned by the list endpoint. Never the key itself.
     # @param [Hash] opts the optional parameters
     # @return [AccountRevealedApikey]
     def account_reveal_apikey(id, opts = {})
@@ -156,7 +156,7 @@ module VPNDetection
 
     # Reveal
     # Returns an existing key&#39;s secret.  Its own scope rather than part of &#x60;apikeys.manage&#x60;, because the two are different acts: rotating replaces a secret you never see, while this hands one over.  Refused with &#x60;NOT_RETRIEVABLE&#x60; for a key issued before this product stored secrets recoverably - that secret was never kept, so no retry will ever produce it. Rotate the key instead. 
-    # @param id [String] The key&#39;s id, as returned by the list endpoint. Never the key itself.
+    # @param id [String] The key&#39;s ID, as returned by the list endpoint. Never the key itself.
     # @param [Hash] opts the optional parameters
     # @return [Array<(AccountRevealedApikey, Integer, Hash)>] AccountRevealedApikey data, response status code and response headers
     def account_reveal_apikey_with_http_info(id, opts = {})
@@ -209,7 +209,7 @@ module VPNDetection
 
     # Revoke
     # Stops the key working. Revocation is soft: the key stays listed with a `revoked_at`, because the organization still owns whatever it did while it was alive. 
-    # @param id [String] The key&#39;s id, as returned by the list endpoint. Never the key itself.
+    # @param id [String] The key&#39;s ID, as returned by the list endpoint. Never the key itself.
     # @param [Hash] opts the optional parameters
     # @return [AccountRc]
     def account_revoke_apikey(id, opts = {})
@@ -219,7 +219,7 @@ module VPNDetection
 
     # Revoke
     # Stops the key working. Revocation is soft: the key stays listed with a &#x60;revoked_at&#x60;, because the organization still owns whatever it did while it was alive. 
-    # @param id [String] The key&#39;s id, as returned by the list endpoint. Never the key itself.
+    # @param id [String] The key&#39;s ID, as returned by the list endpoint. Never the key itself.
     # @param [Hash] opts the optional parameters
     # @return [Array<(AccountRc, Integer, Hash)>] AccountRc data, response status code and response headers
     def account_revoke_apikey_with_http_info(id, opts = {})
@@ -271,8 +271,8 @@ module VPNDetection
     end
 
     # Rotate
-    # Replaces the secret behind a key, keeping its id, name and settings. The previous secret stops working immediately. The new secret comes back in the answer, so this needs `apikeys.reveal` as well as `apikeys.manage`. 
-    # @param id [String] The key&#39;s id, as returned by the list endpoint. Never the key itself.
+    # Replaces the secret behind a key, keeping its ID, name and settings. The previous secret stops working immediately. The new secret comes back in the answer, so this needs `apikeys.reveal` as well as `apikeys.manage`. 
+    # @param id [String] The key&#39;s ID, as returned by the list endpoint. Never the key itself.
     # @param [Hash] opts the optional parameters
     # @return [AccountCreatedApikey]
     def account_rotate_apikey(id, opts = {})
@@ -281,8 +281,8 @@ module VPNDetection
     end
 
     # Rotate
-    # Replaces the secret behind a key, keeping its id, name and settings. The previous secret stops working immediately. The new secret comes back in the answer, so this needs &#x60;apikeys.reveal&#x60; as well as &#x60;apikeys.manage&#x60;. 
-    # @param id [String] The key&#39;s id, as returned by the list endpoint. Never the key itself.
+    # Replaces the secret behind a key, keeping its ID, name and settings. The previous secret stops working immediately. The new secret comes back in the answer, so this needs &#x60;apikeys.reveal&#x60; as well as &#x60;apikeys.manage&#x60;. 
+    # @param id [String] The key&#39;s ID, as returned by the list endpoint. Never the key itself.
     # @param [Hash] opts the optional parameters
     # @return [Array<(AccountCreatedApikey, Integer, Hash)>] AccountCreatedApikey data, response status code and response headers
     def account_rotate_apikey_with_http_info(id, opts = {})

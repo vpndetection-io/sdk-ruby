@@ -14,7 +14,7 @@ require 'date'
 require 'time'
 
 module VPNDetection
-  # The credential itself. The key is never echoed - only its id, which is what the console shows and what you can act on. 
+  # The credential itself. The key is never echoed - only its ID, which is what the console shows and what you can act on. 
   class EntitlementApikey < ApiModelBase
     attr_accessor :id
 

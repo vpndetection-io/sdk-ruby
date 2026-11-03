@@ -15,7 +15,7 @@ require 'time'
 
 module VPNDetection
   class DatabaseVersion < ApiModelBase
-    # The versioned database id, e.g. `vpn_ip_v1`. Pass this to download.
+    # The versioned database ID, e.g. `vpn_ip_v1`. Pass this to download.
     attr_accessor :id
 
     attr_accessor :version

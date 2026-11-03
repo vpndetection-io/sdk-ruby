@@ -14,7 +14,7 @@ require 'date'
 require 'time'
 
 module VPNDetection
-  # One database FAMILY, with your organization's license beside it. A license covers the family, while a download names a specific version, so the ids you pass to the download and checksum endpoints come from `versions`. 
+  # One database FAMILY, with your organization's license beside it. A license covers the family, while a download names a specific version, so the IDs you pass to the download and checksum endpoints come from `versions`. 
   class Database < ApiModelBase
     # The database family, e.g. `vpn_ip`. What the license is held against.
     attr_accessor :base

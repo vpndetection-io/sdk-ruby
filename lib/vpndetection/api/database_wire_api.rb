@@ -156,8 +156,8 @@ module VPNDetection
 
     # Download
     # Answers `302` with a time-limited URL pointing straight at object storage. Follow the redirect; the link authorizes the START of a transfer, so one already running is not interrupted when it lapses. 
-    # @param id [String] Dataset id, e.g. vpn_ip_extended_v1
-    # @param format [DatabaseFormat] Not every database is built in every format. The &#x60;_provider&#x60; catalogs are keyed by provider id rather than by IP range, so no MMDB exists for them. 
+    # @param id [String] Dataset ID, e.g. vpn_ip_extended_v1
+    # @param format [DatabaseFormat] Not every database is built in every format. The &#x60;_provider&#x60; catalogs are keyed by provider ID rather than by IP range, so no MMDB exists for them. 
     # @param [Hash] opts the optional parameters
     # @return [nil]
     def download_database(id, format, opts = {})
@@ -167,8 +167,8 @@ module VPNDetection
 
     # Download
     # Answers &#x60;302&#x60; with a time-limited URL pointing straight at object storage. Follow the redirect; the link authorizes the START of a transfer, so one already running is not interrupted when it lapses. 
-    # @param id [String] Dataset id, e.g. vpn_ip_extended_v1
-    # @param format [DatabaseFormat] Not every database is built in every format. The &#x60;_provider&#x60; catalogs are keyed by provider id rather than by IP range, so no MMDB exists for them. 
+    # @param id [String] Dataset ID, e.g. vpn_ip_extended_v1
+    # @param format [DatabaseFormat] Not every database is built in every format. The &#x60;_provider&#x60; catalogs are keyed by provider ID rather than by IP range, so no MMDB exists for them. 
     # @param [Hash] opts the optional parameters
     # @return [Array<(nil, Integer, Hash)>] nil, response status code and response headers
     def download_database_with_http_info(id, format, opts = {})
