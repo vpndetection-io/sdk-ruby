@@ -6,6 +6,7 @@
 require 'yaml'
 
 require_relative 'test_helper'
+require 'vpndetection/middleware'
 
 class ClientTest < Minitest::Test
   include TestHelper
