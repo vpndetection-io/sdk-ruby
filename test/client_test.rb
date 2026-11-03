@@ -432,22 +432,37 @@ class ClientTest < Minitest::Test
     server&.stop
   end
 
-  # A hydra that may run nothing never finishes, so a limit below 1 is the
-  # caller's mistake to hear about at once, not a batch that hangs.
-  def test_a_batch_concurrency_below_one_is_refused_before_any_request
-    calls = stub_lookups({})
+  # A hydra that may run nothing never finishes, so a concurrency that is not a
+  # whole count from 1 is the caller's mistake to hear about at once. Through
+  # 5.11.3 the client took any value and only its batches refused it, a
+  # per-call 1.5 ran as 1, and Infinity and a Complex escaped as a raw
+  # FloatDomainError and NoMethodError.
+  def test_a_concurrency_that_is_not_an_integer_from_one_is_refused_where_it_is_set
+    calls = stub_lookups('8.8.8.8' => { body: OK_BODY.merge('ip' => '8.8.8.8') })
     client = VPNDetection::Client.new
+    client.lookup('8.8.8.8')
+    calls.clear
 
-    [0, -1, 0.5].each do |limit|
-      error = assert_raises(VPNDetection::Error) { client.lookup_batch(['9.9.9.9'], concurrency: limit) }
-      assert_equal :bad_request, error.kind, "concurrency #{limit}"
-      refute error.retryable?
+    [0, -1, 0.5, 1.5, 2.0, Float::NAN, Float::INFINITY, Rational(3, 2), Complex(2, 0), '2', '', nil,
+     Object.new].each do |limit|
+      assert_raises(ArgumentError, "client concurrency #{limit.inspect}") do
+        VPNDetection::Client.new(concurrency: limit)
+      end
+      next if limit.nil?
+
+      {
+        'a batch' => ['9.9.9.9'],
+        'a batch of a bogon' => ['10.0.0.1'],
+        'a batch of a cached address' => ['8.8.8.8'],
+      }.each do |name, ips|
+        error = assert_raises(VPNDetection::Error, "#{name}, concurrency #{limit.inspect}") do
+          client.lookup_batch(ips, concurrency: limit)
+        end
+        assert_equal :bad_request, error.kind, "#{name}, concurrency #{limit.inspect}"
+        refute error.retryable?
+      end
     end
-    error = assert_raises(VPNDetection::Error) do
-      VPNDetection::Client.new(concurrency: 0).lookup_batch(['9.9.9.9'])
-    end
-    assert_equal :bad_request, error.kind, 'a client built with concurrency 0'
-    assert_empty calls
+    assert_empty calls, 'no refused concurrency reached the network'
   end
 
   # Checked before the bogon and the cache, or a bad value would be refused only

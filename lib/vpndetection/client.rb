@@ -28,7 +28,7 @@ module VPNDetection
     #   address. It is trimmed, and a key of blanks alone is no key.
     # @param cache [Boolean] pass false to disable caching.
     # @param cache_ttl [Numeric] how long an answer stays fresh, in seconds.
-    # @param concurrency [Integer] batch requests - chunks of up to 1000 addresses - in flight during a batch.
+    # @param concurrency [Integer] batch requests - chunks of up to 1000 addresses - in flight during a batch, from 1.
     # @param retries [Integer] extra attempts for a transient failure, from 0. Each
     #   waits the server's `Retry-After` when it sent one of at most about 24.8
     #   days, and otherwise a backoff of 250 ms that doubles per retry.
@@ -40,14 +40,19 @@ module VPNDetection
     # @raise [ArgumentError] for an `api_key` with a control character in it.
     # @raise [ArgumentError] for a `timeout`, here or on any call, that is
     #   negative, not a finite number, or past 2147483.647 seconds (2**31 - 1 ms),
-    #   the longest curl holds, and for a `retries`, here or on any call, that is
-    #   not an Integer from 0.
+    #   the longest curl holds, for a `retries`, here or on any call, that is
+    #   not an Integer from 0, and for a `concurrency` that is not an Integer
+    #   from 1.
     # @param transport [Transport, nil] override the HTTP layer, mostly for tests.
     def initialize(api_key: nil, base_url: DEFAULT_BASE_URL, cache: true,
                    cache_max_size: DEFAULT_CACHE_MAX_SIZE, cache_ttl: DEFAULT_CACHE_TTL,
                    concurrency: DEFAULT_CONCURRENCY, retries: DEFAULT_RETRIES,
                    timeout: DEFAULT_TIMEOUT, transport: nil)
       retries = Retries.checked_count(retries)
+      # Refused where it is set: through 5.11.3 each batch refused it instead.
+      unless concurrency?(concurrency)
+        raise ArgumentError, "concurrency must be an Integer from 1, not #{concurrency.inspect}"
+      end
       @transport = transport || Transport.new(
         Transport::Config.new(api_key: api_key, base_url: base_url, timeout: timeout),
       )
@@ -163,15 +168,16 @@ module VPNDetection
     # per-entry failure with the status the single lookup would have answered,
     # and a chunk that fails as a whole marks every address in it.
     #
-    # @param concurrency [Integer, nil] chunks in flight, for THIS batch only. Below 1
-    #   is refused as `:bad_request` before any request, since nothing could ever run.
+    # @param concurrency [Integer, nil] chunks in flight, for THIS batch only.
+    #   Anything but an Integer from 1 is refused as `:bad_request` before any
+    #   request, and before a bogon or a cached answer is returned.
     # @param retries [Integer, nil] extra attempts for a failed chunk, for THIS batch only.
     # @param timeout [Numeric, nil] seconds each chunk's attempt may take, for THIS batch only.
     # @return [Hash{String => Result, Error}] in the order the addresses were given
     def lookup_batch(ips, concurrency: nil, retries: nil, timeout: nil)
       limit = concurrency || @concurrency
-      unless limit.is_a?(Numeric) && limit >= 1
-        raise Error.new(:bad_request, "concurrency must be at least 1, not #{limit.inspect}")
+      unless concurrency?(limit)
+        raise Error.new(:bad_request, "concurrency must be an Integer from 1, not #{limit.inspect}")
       end
       Transport.checked_timeout(timeout) unless timeout.nil?
       Retries.checked_count(retries) unless retries.nil?
@@ -215,6 +221,12 @@ module VPNDetection
     end
 
     private
+
+    # Whether `value` can be a batch's concurrency: chunks in flight are counted
+    # whole, and a hydra allowed fewer than one runs nothing.
+    def concurrency?(value)
+      value.is_a?(Integer) && value >= 1
+    end
 
     # Concurrent misses for one address share ONE request: 5.4.2 sent one per
     # calling thread. The first miss boards the
