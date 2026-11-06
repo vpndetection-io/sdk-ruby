@@ -65,12 +65,12 @@ class DatabaseTest < Minitest::Test
         licensed << family.base
       end
       # The point of the family shape: a license covers the family, and these are
-      # the ids the download and checksum calls take. Before the spec was
+      # the IDs the download and checksum calls take. Before the spec was
       # corrected this list did not exist, so list() could not tell a caller what
       # to download.
       refute_empty family.versions, "#{family.base} carries no versions"
       family.versions.each do |version|
-        refute_nil version.id, "#{family.base} has a version with no id"
+        refute_nil version.id, "#{family.base} has a version with no ID"
         refute_empty version.formats, "#{version.id} carries no formats"
       end
     end
