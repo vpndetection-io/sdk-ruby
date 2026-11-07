@@ -63,12 +63,16 @@ module VPNDetection
     # START of a transfer, so one already running is not interrupted when it
     # lapses.
     #
+    # @param build [String, nil] one build of the dataset, by the name a
+    #   `database.updated` webhook gives it, so the file is the one whose
+    #   `sha256` the webhook carries; nil, the build that is live. A build is
+    #   kept 7 days, and one pruned since is a `bad_request` with status 410.
     # @param timeout [Numeric, nil] seconds this attempt may take, for THIS call
     #   only. It bounds the request that MINTS the link, which is an ordinary
     #   JSON call, and says nothing about the transfer you then run with it.
-    def download_url(id, format, timeout: nil)
+    def download_url(id, format, build: nil, timeout: nil)
       check_format!(format)
-      call { redirect_location(id, format, timeout) }
+      call { redirect_location(id, format, build, timeout) }
     end
 
     # Download one dataset file to `path`, and return the bytes written.
@@ -77,11 +81,11 @@ module VPNDetection
     # so a transfer that dies half way leaves no truncated file that reads as a
     # whole dataset, and a refresh that fails does not destroy the copy already
     # there. Nothing beyond one chunk is ever held in memory, whatever the
-    # dataset weighs.
-    def download(id, format, path)
+    # dataset weighs. `build` asks for one build, as in {#download_url}.
+    def download(id, format, path, build: nil)
       partial = "#{path}.part"
       begin
-        url = download_url(id, format)
+        url = download_url(id, format, build: build)
         written = File.open(partial, 'wb') { |file| transfer(url) { |chunk| file.write(chunk) } }
         File.rename(partial, path)
       rescue StandardError
@@ -96,9 +100,10 @@ module VPNDetection
     # **This holds the entire file in memory**, and the catalog spans five orders
     # of magnitude: `cdn_ip_v1` is 10 KB while `resproxy_ip_90d_v1` is 1.79 GB.
     # Reach for it at the small end, where the bytes go straight into a parser,
-    # and use {#download} for anything you have not measured.
-    def download_bytes(id, format)
-      url = download_url(id, format)
+    # and use {#download} for anything you have not measured. `build` asks for
+    # one build, as in {#download_url}.
+    def download_bytes(id, format, build: nil)
+      url = download_url(id, format, build: build)
       bytes = String.new(encoding: Encoding::BINARY)
       transfer(url) { |chunk| bytes << chunk }
       bytes
@@ -180,8 +185,8 @@ module VPNDetection
     # The 302 is this operation's SUCCESS case, but the generated client treats
     # every non-2xx as a failure, so it arrives as an ApiError carrying the
     # Location header.
-    def redirect_location(id, format, timeout)
-      _, status, = @api.download_database_with_http_info(id, format, timeout: timeout)
+    def redirect_location(id, format, build, timeout)
+      _, status, = @api.download_database_with_http_info(id, format, build: build, timeout: timeout)
       raise Error.new(:server_error, 'expected a redirect to object storage', status: status)
     rescue ApiError => e
       raise unless e.code == 302

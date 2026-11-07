@@ -178,6 +178,13 @@ bytes = client.database.download_bytes('cdn_ip_v1', 'csvgz')
 
 `download` streams straight to disk, so nothing bigger than a chunk is ever held in memory whatever the database weighs, and it writes through a neighboring `.part` file so a transfer that dies half way leaves no truncated copy behind. `download_url` hands back the time-limited link and follows nothing, for when you want to run the transfer yourself. `download_bytes` holds the whole file in memory, and the catalog runs from `cdn_ip_v1` at 10 KB to `resproxy_ip_90d_v1` at 1.79 GB, so reach for `download` for anything you have not measured.
 
+From 5.12.0, each of the three takes `build:`, the build a `database.updated` webhook names, so the file is the one whose `sha256` the webhook carries rather than whatever is live by the time you ask. Without it you get the live build. A build is kept 7 days, and one pruned since is a `:bad_request` with status 410; a value that is no build's name raises `ArgumentError` before any request:
+
+```ruby
+data = event.fetch('data') # a database.updated webhook's
+client.database.download(data['dataset'], 'mmdb', "./#{data['dataset']}.mmdb", build: data['build'])
+```
+
 From 5.3.0, `list`, `metadata`, `checksums`, `downloads` and `download_url` each take `timeout:` in seconds for that call alone, overriding the client's for one attempt of it:
 
 ```ruby

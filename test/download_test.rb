@@ -40,6 +40,49 @@ class DownloadTest < Minitest::Test
     assert_equal ['/api/v1/database/download', '/blob'], @origin.paths
   end
 
+  def test_download_url_asks_for_the_live_build_unless_given_one
+    client = origin_client
+
+    client.database.download_url('cdn_ip_v1', 'csvgz')
+    client.database.download_url('cdn_ip_v1', 'csvgz', build: '20261105.0t53s5')
+
+    assert_equal ['/api/v1/database/download?id=cdn_ip_v1&format=csvgz',
+                  '/api/v1/database/download?id=cdn_ip_v1&format=csvgz&build=20261105.0t53s5'],
+                 @origin.targets
+  end
+
+  def test_a_transfer_asks_for_the_build_it_is_given
+    client = origin_client
+
+    client.database.download('cdn_ip_v1', 'csvgz', File.join(@dir, 'build.csv.gz'), build: '20261105.0t53s5')
+    client.database.download_bytes('cdn_ip_v1', 'csvgz', build: '20261105.0t53s5')
+
+    minted = @origin.targets.select { |t| t.start_with?('/api/v1/database/download') }
+    assert_equal 2, minted.size
+    minted.each { |t| assert t.end_with?('&build=20261105.0t53s5'), "#{t} lost the build" }
+  end
+
+  # A pruned build is gone for good, so asking again cannot help.
+  def test_a_build_no_longer_kept_is_a_bad_request_with_its_410_sent_once
+    client = origin_client(mint_status: 410, retries: 3)
+
+    error = assert_raises(VPNDetection::Error) do
+      client.database.download_bytes('cdn_ip_v1', 'csvgz', build: '20261029.abc123')
+    end
+
+    assert_equal :bad_request, error.kind
+    assert_equal 410, error.status
+    assert_equal ['/api/v1/database/download'], @origin.paths
+  end
+
+  # The generated layer checks the build's pattern before anything is sent.
+  def test_a_build_that_is_no_build_name_is_refused_before_it_is_sent
+    client = origin_client
+
+    assert_raises(ArgumentError) { client.database.download_url('cdn_ip_v1', 'csvgz', build: 'latest') }
+    assert_empty @origin.paths
+  end
+
   def test_download_bytes_agrees_with_the_streamed_copy
     client = origin_client
     path = File.join(@dir, 'cdn_ip_v1.csv.gz')
@@ -251,6 +294,10 @@ class Origin
 
   def paths
     @lock.synchronize { @seen.map { |r| r[:path] } }
+  end
+
+  def targets
+    @lock.synchronize { @seen.map { |r| r[:target] } }
   end
 
   def request(path)
