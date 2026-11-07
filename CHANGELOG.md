@@ -2,6 +2,17 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.12.0 - 2026-11-07
+
+### Features
+
+- Download the build a database.updated webhook names ([`c780d94`](https://github.com/vpndetection-io/sdk-ruby/commit/c780d94da3c6f6b607c99e43e3f202f37e0df4e3))
+
+### Fixes
+
+- Re-pin the spec to 2026.11.05: the download's build parameter ([`12d4559`](https://github.com/vpndetection-io/sdk-ruby/commit/12d45595c9d6e8d558ce281c10a35939b66b9661))
+- Re-pin the spec to 2026.11.03: a proxy flag keeps its last values ([`2e1a26e`](https://github.com/vpndetection-io/sdk-ruby/commit/2e1a26ee648531766640982da609cdf2150a3754))
+
 ## 5.11.4 - 2026-11-03
 
 ### Fixes
