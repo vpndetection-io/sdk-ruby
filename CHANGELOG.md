@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.14.1 - 2026-11-11
+
+### Fixes
+
+- Say the free plan's daily trial and Unlimited, the free plan, and re-pin the spec ([`9d8c0d0`](https://github.com/vpndetection-io/sdk-ruby/commit/9d8c0d0c933d382a84d3c7cc3843d77015b1466f))
+
 ## 5.14.0 - 2026-11-11
 
 ### Features
