@@ -23,10 +23,9 @@ module VPNDetection
     # Signing a person in with OAuth, which needs no API key at all.
     attr_reader :oauth
 
-    # @param api_key [String, nil] omit it to look up without one: a lookup then
-    #   answers `ip`, `is_vpn`, the Tor and relay members, `location` and `asn`,
-    #   with no daily or monthly cap, and a batch is refused as
-    #   `:unauthorized`. It is trimmed, and a key of blanks alone is no key.
+    # @param api_key [String, nil] without one a lookup is on the Unlimited tier:
+    #   `ip`, `is_vpn`, the Tor and relay members, `location` and `asn`, with no
+    #   daily or monthly cap. A batch needs a key on a paid plan. It is trimmed, and a key of blanks alone is no key.
     # @param cache [Boolean] pass false to disable caching.
     # @param cache_ttl [Numeric] how long an answer stays fresh, in seconds.
     # @param concurrency [Integer] batch requests - chunks of up to 1000 addresses - in flight during a batch, from 1.
@@ -142,10 +141,11 @@ module VPNDetection
     # built without an API key gets an unauthorized error rather than a partial
     # one.
     #
-    # Usage counts against the ALLOWANCE WINDOW - the anniversary of the
-    # subscription, not the calendar month and not the billing period - and it
-    # is the same number a lookup is gated on. It can lag by a few seconds,
-    # because requests are counted in memory and flushed in aggregate.
+    # Usage counts against the ALLOWANCE WINDOW - on a paid plan the
+    # anniversary of the subscription, not the calendar month and not the
+    # billing period, and on a trial key the UTC day - and it is the same
+    # number a lookup is gated on. It can lag by a few seconds, because
+    # requests are counted in memory and flushed in aggregate.
     #
     # Deliberately NOT cached: the whole point is what has been spent, and a
     # cached answer is a wrong one within seconds of the next request.
@@ -168,8 +168,9 @@ module VPNDetection
     # so one bad entry cannot lose the rest of the answers: the API reports a
     # per-entry failure with the status the single lookup would have answered,
     # and a chunk that fails as a whole marks every address in it. The batch
-    # endpoint needs an API key, a free one included: without one, every address
-    # sent to it carries an `:unauthorized` error.
+    # endpoint needs a paid plan: without a key every address sent to it carries
+    # an `:unauthorized` error, and a trial key's batch of two or more a
+    # `:bad_request` (HTTP 402).
     #
     # @param concurrency [Integer, nil] chunks in flight, for THIS batch only.
     #   Anything but an Integer from 1 is refused as `:bad_request` before any

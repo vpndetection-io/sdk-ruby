@@ -41,20 +41,65 @@ class LookupTest < Minitest::Test
     below = nil
     Tiers.observable.each do |rung|
       fixture = Staging.answer_for(rung)
-      puts "==> #{rung[:tier]}: #{fixture[:raw].length} fields"
+      fields = tier_fields(fixture)
+      puts "==> #{rung[:tier]}: #{fields.length} fields"
       next below = fixture if below.nil?
 
-      (below[:raw].keys - fixture[:raw].keys).each do |field|
+      (tier_fields(below) - fields).each do |field|
         flunk "#{rung[:tier]} drops #{field}, which #{below[:rung][:tier]} serves"
       end
       # Without this a run in which every key resolved to the same plan would
       # pass: identical sets satisfy containment in both directions.
       if rung[:widens]
-        assert_operator fixture[:raw].length, :>, below[:raw].length,
+        assert_operator fields.length, :>, tier_fields(below).length,
                         "#{rung[:tier]} is no wider than #{below[:rung][:tier]}"
       end
-      below = fixture
+      below = fixture unless rung[:tier] == 'trial'
     end
+  end
+
+  # The fields a tier serves: trial_expired marks a trial key's answers, and no
+  # other, so it is not one.
+  def tier_fields(fixture)
+    fixture[:raw].keys - ['trial_expired']
+  end
+
+  def test_a_trial_keys_answer_is_a_paid_one_or_unlimiteds_and_says_which
+    reason = Tiers.skip_for(Tiers.trial)
+    skip reason if reason
+    raw = Staging.answer_for(Tiers.trial)[:raw]
+
+    assert_includes [true, false], raw['trial_expired'], 'a trial key answers trial_expired'
+    # The organization's first 100 lookups of the UTC day are answered in full,
+    # and the rest as Unlimited's: which half a run sees depends on the day.
+    assert_equal !raw['trial_expired'], raw.key?('is_hosting')
+  end
+
+  def test_a_trial_keys_batch_of_two_is_refused_as_a_bad_request_once
+    reason = Tiers.skip_for(Tiers.trial)
+    skip reason if reason
+    client = Staging.client_for(Tiers.trial, cache: false)
+    before = Staging.facts.length
+
+    results = client.lookup_batch([Staging::PROBE, '8.8.8.8'])
+
+    [Staging::PROBE, '8.8.8.8'].each do |ip|
+      refused = results[ip]
+      assert_kind_of VPNDetection::Error, refused, "#{ip}: a trial key's batch of two must fail"
+      assert_equal [:bad_request, 402, false], [refused.kind, refused.status, refused.retryable?]
+    end
+    assert_equal ['/batch'], Staging.facts[before..].map(&:path), 'one request, never retried'
+  end
+
+  def test_a_trial_keys_batch_of_one_is_answered
+    reason = Tiers.skip_for(Tiers.trial)
+    skip reason if reason
+    client = Staging.client_for(Tiers.trial, cache: false)
+
+    answer = client.lookup_batch([Staging::PROBE])[Staging::PROBE]
+
+    refute_kind_of VPNDetection::Error, answer, "a trial key's batch of one failed"
+    assert_includes [true, false], answer.to_h['trial_expired'], 'the answer carries trial_expired'
   end
 
   # The one that matters most in Ruby, where nil and false are both falsy: a
@@ -119,10 +164,10 @@ class LookupTest < Minitest::Test
   end
 
   def test_a_batch_collapses_duplicates_and_keeps_bogons_off_the_wire
-    # A batch needs a key, and the free one is the cheapest that has it.
-    reason = Tiers.skip_for(Tiers.free)
+    # A batch needs a paid plan, and starter is the cheapest.
+    reason = Tiers.skip_for(Tiers.paid)
     skip reason if reason
-    client = Staging.client_for(Tiers.free, cache: false)
+    client = Staging.client_for(Tiers.paid, cache: false)
     before = Staging.facts.length
 
     results = client.lookup_batch([Staging::PROBE, '8.8.8.8', Staging::PROBE, '10.0.0.1', '8.8.8.8'])
@@ -132,7 +177,7 @@ class LookupTest < Minitest::Test
     # wobbling staging cannot read as a failure to deduplicate.
     sent = Staging.facts[before..]
     assert_equal ['/batch'], sent.map(&:path).uniq
-    assert(sent.all? { |fact| fact.tiers.include?('free') }, 'the free key never reached the wire')
+    assert(sent.all? { |fact| fact.tiers.include?('starter') }, 'the paid key never reached the wire')
     assert_equal [Staging::PROBE, '8.8.8.8'].sort, sent.flat_map(&:ips).uniq.sort
     assert results['10.0.0.1'].bogon?, '10.0.0.1 was not answered locally'
     [Staging::PROBE, '8.8.8.8'].each do |ip|

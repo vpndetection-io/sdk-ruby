@@ -57,7 +57,7 @@ class ClientTest < Minitest::Test
 
   def test_a_429_without_retry_after_is_never_retried
     calls = stub_lookups('1.1.1.1' => {
-      status: 429, body: { 'error' => 'monthly request allowance spent; upgrade your plan for more lookups' }
+      status: 429, body: { 'error' => 'overage cap reached; raise or remove it in Billing' }
     })
     client = VPNDetection::Client.new(retries: 2)
 

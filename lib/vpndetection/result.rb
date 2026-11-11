@@ -76,7 +76,7 @@ module VPNDetection
     end
 
     # Whether the address belongs to a hosting or cloud provider, or nil when
-    # your plan does not include it. With any key, a free one included.
+    # your plan does not include it. On every paid plan.
     def is_hosting
       @raw['is_hosting']
     end
@@ -109,7 +109,7 @@ module VPNDetection
     end
 
     # Whether the address belongs to a CDN, or nil when your plan does not
-    # include it. With any key, a free one included.
+    # include it. On every paid plan.
     def is_cdn
       @raw['is_cdn']
     end
@@ -120,7 +120,7 @@ module VPNDetection
     end
 
     # Whether the address was seen in a residential proxy pool, or nil when your
-    # plan does not include it. With any key, a free one included.
+    # plan does not include it. On every paid plan.
     def is_resproxy
       @raw['is_resproxy']
     end
@@ -132,7 +132,7 @@ module VPNDetection
 
     # Whether the address is one a datacenter proxy service sells or runs on, a
     # proxy company's own ranges included, or nil when your plan does not
-    # include it. With any key, a free one included.
+    # include it. On every paid plan.
     def is_dcproxy
       @raw['is_dcproxy']
     end
@@ -143,7 +143,7 @@ module VPNDetection
     end
 
     # Whether the address was seen in a mobile proxy pool, or nil when your plan
-    # does not include it. With any key, a free one included.
+    # does not include it. On every paid plan.
     def is_mobproxy
       @raw['is_mobproxy']
     end
@@ -155,7 +155,7 @@ module VPNDetection
 
     # Whether a public proxy, one anyone can connect through, listens on the
     # address or sends its traffic out from it, or nil when your plan does not
-    # include it. With any key, a free one included.
+    # include it. On every paid plan.
     def is_pubproxy
       @raw['is_pubproxy']
     end
@@ -227,6 +227,18 @@ module VPNDetection
     # answer, with or without a key.
     def asn
       @raw['asn']
+    end
+
+    # On a Trial key's answers only: false while the organization's 100 full
+    # answers for the UTC day last, true once the answer is Unlimited's; nil on
+    # any other answer.
+    def trial_expired
+      @raw['trial_expired']
+    end
+
+    # `trial_expired` with an absent member read as false.
+    def trial_expired?
+      @raw['trial_expired'] == true
     end
 
     def to_h

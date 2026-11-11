@@ -1,7 +1,7 @@
 =begin
 #VPNDetection API
 
-#The VPNDetection API: classify any IP address, and download the databases behind the answers.  Lookups need no API key: the Unlimited tier answers any address with no daily or monthly cap, for non-commercial use, and a service built on it must credit VPNDetection (https://vpndetection.io/terms#no-key). Commercial use needs a key, a free one included, which also adds every remaining flag.  See https://docs.vpndetection.io for guides and https://github.com/vpndetection-io for the official client libraries. 
+#The VPNDetection API: classify any IP address, and download the databases behind the answers.  Lookups need no API key: the Unlimited tier answers any address with no daily or monthly cap, with a key or without one. Every paid plan answers every field, and an organization on no paid plan can try them, 100 lookups a day. Unlimited's answers may be used commercially, but not redistributed or used in a competing service (https://vpndetection.io/terms#no-key).  See https://docs.vpndetection.io for guides and https://github.com/vpndetection-io for the official client libraries. 
 
 The version of the OpenAPI document: 2026.11.11
 Contact: support@vpndetection.io
@@ -14,7 +14,7 @@ require 'date'
 require 'time'
 
 module VPNDetection
-  # The union of every plan's answer. Every answer carries `ip`, `is_vpn`, the Tor and relay members, `location` and `asn`, with or without a key; each remaining field is present when your key includes it, and absent otherwise. A client that must work across plans should treat an absent flag as unknown rather than as `false`. 
+  # The union of every tier's answer. Every answer carries `ip`, `is_vpn`, the Tor and relay members, `location` and `asn`, with or without a key; each remaining field is present when your tier includes it, and absent otherwise. A client that must work across plans should treat an absent flag as unknown rather than as `false`. 
   class LookupResponse < ApiModelBase
     # The address that was looked up, normalized.
     attr_accessor :ip
@@ -22,7 +22,7 @@ module VPNDetection
     # Whether the address is VPN infrastructure. Keys off presence in the VPN dataset, so an unattributed range with no provider is still `true`. 
     attr_accessor :is_vpn
 
-    # Whether the address belongs to a hosting or cloud provider. Free and paid plans.
+    # Whether the address belongs to a hosting or cloud provider. Paid plans.
     attr_accessor :is_hosting
 
     # Whether the address is privacy relay or enterprise web gateway egress, such as iCloud Private Relay or Zscaler. Every answer, with or without a key.
@@ -31,19 +31,19 @@ module VPNDetection
     # Whether the address is a Tor node. Every answer, with or without a key.
     attr_accessor :is_tor
 
-    # Whether the address belongs to a CDN. Free and paid plans.
+    # Whether the address belongs to a CDN. Paid plans.
     attr_accessor :is_cdn
 
-    # Whether the address was seen in a residential proxy pool. Free and paid plans.
+    # Whether the address was seen in a residential proxy pool. Paid plans.
     attr_accessor :is_resproxy
 
-    # Whether the address is one a datacenter proxy service sells or runs on, a proxy company's own ranges included. Free and paid plans.
+    # Whether the address is one a datacenter proxy service sells or runs on, a proxy company's own ranges included. Paid plans.
     attr_accessor :is_dcproxy
 
-    # Whether the address was seen in a mobile proxy pool. Free and paid plans.
+    # Whether the address was seen in a mobile proxy pool. Paid plans.
     attr_accessor :is_mobproxy
 
-    # Whether a public proxy, one anyone can connect through, listens on the address or sends its traffic out from it. Free and paid plans.
+    # Whether a public proxy, one anyone can connect through, listens on the address or sends its traffic out from it. Paid plans.
     attr_accessor :is_pubproxy
 
     # Detail for `is_vpn`. Empty when `is_vpn` is false. Paid plans. 
@@ -77,6 +77,9 @@ module VPNDetection
 
     attr_accessor :asn
 
+    # On every answer to a trial key, an organization on no paid plan, and on no other: `false` while the organization's 100 full answers for the UTC day last, `true` once the answer is Unlimited's. 
+    attr_accessor :trial_expired
+
     # Attribute mapping from ruby-style variable name to JSON key.
     def self.attribute_map
       {
@@ -100,7 +103,8 @@ module VPNDetection
         :'mobproxy' => :'mobproxy',
         :'pubproxy' => :'pubproxy',
         :'location' => :'location',
-        :'asn' => :'asn'
+        :'asn' => :'asn',
+        :'trial_expired' => :'trial_expired'
       }
     end
 
@@ -137,7 +141,8 @@ module VPNDetection
         :'mobproxy' => :'ProxyDetail',
         :'pubproxy' => :'PubproxyDetail',
         :'location' => :'Location',
-        :'asn' => :'Asn'
+        :'asn' => :'Asn',
+        :'trial_expired' => :'Boolean'
       }
     end
 
@@ -250,6 +255,10 @@ module VPNDetection
       if attributes.key?(:'asn')
         self.asn = attributes[:'asn']
       end
+
+      if attributes.key?(:'trial_expired')
+        self.trial_expired = attributes[:'trial_expired']
+      end
     end
 
     # Show invalid properties with the reasons. Usually used together with valid?
@@ -322,7 +331,8 @@ module VPNDetection
           mobproxy == o.mobproxy &&
           pubproxy == o.pubproxy &&
           location == o.location &&
-          asn == o.asn
+          asn == o.asn &&
+          trial_expired == o.trial_expired
     end
 
     # @see the `==` method
@@ -334,7 +344,7 @@ module VPNDetection
     # Calculates hash code according to all attributes.
     # @return [Integer] Hash code
     def hash
-      [ip, is_vpn, is_hosting, is_relay, is_tor, is_cdn, is_resproxy, is_dcproxy, is_mobproxy, is_pubproxy, vpn, hosting, relay, tor, cdn, resproxy, dcproxy, mobproxy, pubproxy, location, asn].hash
+      [ip, is_vpn, is_hosting, is_relay, is_tor, is_cdn, is_resproxy, is_dcproxy, is_mobproxy, is_pubproxy, vpn, hosting, relay, tor, cdn, resproxy, dcproxy, mobproxy, pubproxy, location, asn, trial_expired].hash
     end
 
     # Builds the object from hash
