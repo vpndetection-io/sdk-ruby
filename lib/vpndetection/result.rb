@@ -129,8 +129,9 @@ module VPNDetection
       @raw['is_resproxy'] == true
     end
 
-    # Whether the address was seen in a datacenter proxy pool, or nil when your
-    # plan does not include it. Every paid plan.
+    # Whether the address is one a datacenter proxy service sells or runs on, a
+    # proxy company's own ranges included, or nil when your plan does not
+    # include it. Every paid plan.
     def is_dcproxy
       @raw['is_dcproxy']
     end
