@@ -7,11 +7,10 @@ module VPNDetection
   # Everything this library raises.
   #
   # `:rate_limited` and `:quota_exceeded` both arrive as HTTP 429 and are NOT the
-  # same thing. A rate limit is the API protecting itself, or a lookup without a
-  # key past 60 a minute, and carries `Retry-After`; retrying works. A spent
-  # quota carries no such header and retrying will not help until the window
-  # rolls over or the limit is raised. The header is the only thing that
-  # distinguishes them.
+  # same thing. A rate limit is the API protecting itself and carries
+  # `Retry-After`; retrying works. A spent quota carries no such header and
+  # retrying will not help until the window rolls over or the limit is raised.
+  # The header is the only thing that distinguishes them.
   class Error < StandardError
     KINDS = %i[
       bad_request unauthorized forbidden rate_limited quota_exceeded server_error network

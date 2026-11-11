@@ -25,7 +25,7 @@ module VPNDetection
 
     # @param api_key [String, nil] omit it to look up without one: a lookup then
     #   answers `ip`, `is_vpn`, the Tor and relay members, `location` and `asn`,
-    #   up to 60 a minute from each address, and a batch is refused as
+    #   with no daily or monthly cap, and a batch is refused as
     #   `:unauthorized`. It is trimmed, and a key of blanks alone is no key.
     # @param cache [Boolean] pass false to disable caching.
     # @param cache_ttl [Numeric] how long an answer stays fresh, in seconds.
