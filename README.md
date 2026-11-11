@@ -23,7 +23,7 @@ Requires Ruby 3.3 or newer.
 
 ## Usage
 
-**No API key needed to start.** Without a key a lookup answers `ip`, `is_vpn`, Tor and relay detection, `location` and `asn`, unlimited, with no daily or monthly cap.
+**No API key needed to start.** The Unlimited tier answers `ip`, `is_vpn`, Tor and relay detection, `location` and `asn`, with no daily or monthly cap, for [non-commercial use](https://vpndetection.io/terms#no-key). Commercial use, or a batch lookup, needs a key, a free one included.
 
 ```ruby
 require 'vpndetection'
@@ -38,7 +38,7 @@ result.asn['name']          # who runs the announcing network
 
 ### With an API key
 
-A free key adds every other flag, `is_hosting`, `is_cdn` and the four proxy flags, at 50,000 lookups a month, and every paid plan answers every field, the provider, confidence and last-seen detail behind each flag included. The paid plans differ only in how many lookups they include. Batch lookups need a key. Create one in the [console](https://app.vpndetection.io), then pass it in:
+A free key adds every other flag, `is_hosting`, `is_cdn` and the four proxy flags, at 50,000 lookups a month, and every paid plan answers every field, the provider, confidence and last-seen detail behind each flag included. The paid plans differ only in how many lookups they include. Create a key in the [console](https://app.vpndetection.io), then pass it in:
 
 ```ruby
 client = VPNDetection::Client.new(api_key: ENV['VPNDETECTION_API_KEY'])

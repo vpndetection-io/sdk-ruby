@@ -1,7 +1,7 @@
 =begin
 #VPNDetection API
 
-#The VPNDetection API: classify any IP address, and download the databases behind the answers.  See https://docs.vpndetection.io for guides and https://github.com/vpndetection-io for the official client libraries. 
+#The VPNDetection API: classify any IP address, and download the databases behind the answers.  Lookups need no API key: the Unlimited tier answers any address with no daily or monthly cap, for non-commercial use, and a service built on it must credit VPNDetection (https://vpndetection.io/terms#no-key). Commercial use needs a key, a free one included, which also adds every remaining flag.  See https://docs.vpndetection.io for guides and https://github.com/vpndetection-io for the official client libraries. 
 
 The version of the OpenAPI document: 2026.11.11
 Contact: support@vpndetection.io
@@ -20,7 +20,7 @@ module VPNDetection
       @api_client = api_client
     end
     # Batch
-    # Answers up to 1000 addresses in one call. Each distinct string in `ips` is one lookup: it costs exactly what `GET /{ip}` costs for that address and comes back with exactly the fields that call would carry for your plan. Exact duplicates collapse to one entry and one lookup.  Both maps in the answer are keyed by the string you sent, so nothing has to be lined up by position; the `ip` inside each result is the normalized form. An address that could not be answered sits in `errors` with the status and message the single lookup would have given, and never disturbs the others: a string that is not an address is a `400` there, and an allowance that runs out part way through leaves the remaining entries as `429`s.  The call itself fails only for the reasons below, and a `429` on the call always carries `Retry-After`: the batch is admitted or refused whole by the rate limit, so a per-entry `429` is always a spent allowance and never a throttle.  A batch needs an API key, a free one included: without one the call is refused with `401`. Keyless lookups are one address at a time. 
+    # Answers up to 1000 addresses in one call. Each distinct string in `ips` is one lookup: it costs exactly what `GET /{ip}` costs for that address and comes back with exactly the fields that call would carry for your plan. Exact duplicates collapse to one entry and one lookup.  Both maps in the answer are keyed by the string you sent, so nothing has to be lined up by position; the `ip` inside each result is the normalized form. An address that could not be answered sits in `errors` with the status and message the single lookup would have given, and never disturbs the others: a string that is not an address is a `400` there, and an allowance that runs out part way through leaves the remaining entries as `429`s.  The call itself fails only for the reasons below, and a `429` on the call always carries `Retry-After`: the batch is admitted or refused whole by the rate limit, so a per-entry `429` is always a spent allowance and never a throttle.  A batch needs an API key, a free one included: without one the call is refused with `401`. The Unlimited tier looks up one address at a time. 
     # @param batch_lookup_request [BatchLookupRequest] 
     # @param [Hash] opts the optional parameters
     # @return [BatchLookupResponse]
@@ -30,7 +30,7 @@ module VPNDetection
     end
 
     # Batch
-    # Answers up to 1000 addresses in one call. Each distinct string in &#x60;ips&#x60; is one lookup: it costs exactly what &#x60;GET /{ip}&#x60; costs for that address and comes back with exactly the fields that call would carry for your plan. Exact duplicates collapse to one entry and one lookup.  Both maps in the answer are keyed by the string you sent, so nothing has to be lined up by position; the &#x60;ip&#x60; inside each result is the normalized form. An address that could not be answered sits in &#x60;errors&#x60; with the status and message the single lookup would have given, and never disturbs the others: a string that is not an address is a &#x60;400&#x60; there, and an allowance that runs out part way through leaves the remaining entries as &#x60;429&#x60;s.  The call itself fails only for the reasons below, and a &#x60;429&#x60; on the call always carries &#x60;Retry-After&#x60;: the batch is admitted or refused whole by the rate limit, so a per-entry &#x60;429&#x60; is always a spent allowance and never a throttle.  A batch needs an API key, a free one included: without one the call is refused with &#x60;401&#x60;. Keyless lookups are one address at a time. 
+    # Answers up to 1000 addresses in one call. Each distinct string in &#x60;ips&#x60; is one lookup: it costs exactly what &#x60;GET /{ip}&#x60; costs for that address and comes back with exactly the fields that call would carry for your plan. Exact duplicates collapse to one entry and one lookup.  Both maps in the answer are keyed by the string you sent, so nothing has to be lined up by position; the &#x60;ip&#x60; inside each result is the normalized form. An address that could not be answered sits in &#x60;errors&#x60; with the status and message the single lookup would have given, and never disturbs the others: a string that is not an address is a &#x60;400&#x60; there, and an allowance that runs out part way through leaves the remaining entries as &#x60;429&#x60;s.  The call itself fails only for the reasons below, and a &#x60;429&#x60; on the call always carries &#x60;Retry-After&#x60;: the batch is admitted or refused whole by the rate limit, so a per-entry &#x60;429&#x60; is always a spent allowance and never a throttle.  A batch needs an API key, a free one included: without one the call is refused with &#x60;401&#x60;. The Unlimited tier looks up one address at a time. 
     # @param batch_lookup_request [BatchLookupRequest] 
     # @param [Hash] opts the optional parameters
     # @return [Array<(BatchLookupResponse, Integer, Hash)>] BatchLookupResponse data, response status code and response headers
@@ -88,7 +88,7 @@ module VPNDetection
     end
 
     # Lookup
-    # Answers what is known about a single IPv4 or IPv6 address. Which fields come back is decided by the presented key; with no key the answer is `ip`, `is_vpn`, the Tor and relay members, `location` and `asn`. 
+    # Answers what is known about a single IPv4 or IPv6 address. Which fields come back is decided by the presented key; with no key, the Unlimited tier, the answer is `ip`, `is_vpn`, the Tor and relay members, `location` and `asn`. 
     # @param ip [String] The IPv4 or IPv6 address to classify.
     # @param [Hash] opts the optional parameters
     # @return [LookupResponse]
@@ -98,7 +98,7 @@ module VPNDetection
     end
 
     # Lookup
-    # Answers what is known about a single IPv4 or IPv6 address. Which fields come back is decided by the presented key; with no key the answer is &#x60;ip&#x60;, &#x60;is_vpn&#x60;, the Tor and relay members, &#x60;location&#x60; and &#x60;asn&#x60;. 
+    # Answers what is known about a single IPv4 or IPv6 address. Which fields come back is decided by the presented key; with no key, the Unlimited tier, the answer is &#x60;ip&#x60;, &#x60;is_vpn&#x60;, the Tor and relay members, &#x60;location&#x60; and &#x60;asn&#x60;. 
     # @param ip [String] The IPv4 or IPv6 address to classify.
     # @param [Hash] opts the optional parameters
     # @return [Array<(LookupResponse, Integer, Hash)>] LookupResponse data, response status code and response headers
