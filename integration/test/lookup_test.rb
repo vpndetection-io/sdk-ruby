@@ -58,24 +58,24 @@ class LookupTest < Minitest::Test
     end
   end
 
-  # The fields a tier serves: trial_expired marks a trial key's answers, and no
-  # other, so it is not one.
+  # The fields a tier serves: trial_expired marks a free-plan key's answers, and
+  # no other, so it is not one.
   def tier_fields(fixture)
     fixture[:raw].keys - ['trial_expired']
   end
 
-  def test_a_trial_keys_answer_is_a_paid_one_or_unlimiteds_and_says_which
+  def test_a_free_plan_keys_answer_is_a_paid_one_or_unlimiteds_and_says_which
     reason = Tiers.skip_for(Tiers.trial)
     skip reason if reason
     raw = Staging.answer_for(Tiers.trial)[:raw]
 
-    assert_includes [true, false], raw['trial_expired'], 'a trial key answers trial_expired'
+    assert_includes [true, false], raw['trial_expired'], 'a free-plan key answers trial_expired'
     # The organization's first 100 lookups of the UTC day are answered in full,
     # and the rest as Unlimited's: which half a run sees depends on the day.
     assert_equal !raw['trial_expired'], raw.key?('is_hosting')
   end
 
-  def test_a_trial_keys_batch_of_two_is_refused_as_a_bad_request_once
+  def test_a_free_plan_keys_batch_of_two_is_refused_as_a_bad_request_once
     reason = Tiers.skip_for(Tiers.trial)
     skip reason if reason
     client = Staging.client_for(Tiers.trial, cache: false)
@@ -85,20 +85,20 @@ class LookupTest < Minitest::Test
 
     [Staging::PROBE, '8.8.8.8'].each do |ip|
       refused = results[ip]
-      assert_kind_of VPNDetection::Error, refused, "#{ip}: a trial key's batch of two must fail"
+      assert_kind_of VPNDetection::Error, refused, "#{ip}: a free-plan key's batch of two must fail"
       assert_equal [:bad_request, 402, false], [refused.kind, refused.status, refused.retryable?]
     end
     assert_equal ['/batch'], Staging.facts[before..].map(&:path), 'one request, never retried'
   end
 
-  def test_a_trial_keys_batch_of_one_is_answered
+  def test_a_free_plan_keys_batch_of_one_is_answered
     reason = Tiers.skip_for(Tiers.trial)
     skip reason if reason
     client = Staging.client_for(Tiers.trial, cache: false)
 
     answer = client.lookup_batch([Staging::PROBE])[Staging::PROBE]
 
-    refute_kind_of VPNDetection::Error, answer, "a trial key's batch of one failed"
+    refute_kind_of VPNDetection::Error, answer, "a free-plan key's batch of one failed"
     assert_includes [true, false], answer.to_h['trial_expired'], 'the answer carries trial_expired'
   end
 
