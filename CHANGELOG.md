@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.13.0 - 2026-11-11
+
+### Features
+
+- Re-pin the spec to 2026.11.11: a lookup without a key answers more ([`e1437ab`](https://github.com/vpndetection-io/sdk-ruby/commit/e1437abc527d672038245e930892b595b16aa44e))
+
 ## 5.12.0 - 2026-11-07
 
 ### Features
