@@ -15,7 +15,7 @@ require_relative '../lib/staging'
 class LookupTest < Minitest::Test
   include StagingAssertions
 
-  def test_an_unauthenticated_lookup_answers_ip_and_is_vpn
+  def test_a_lookup_without_a_key_answers_ip_and_is_vpn_at_the_least
     fixture = Staging.answer_for(Tiers.unauth)
 
     assert_equal Staging::PROBE, fixture[:raw]['ip']
@@ -105,8 +105,24 @@ class LookupTest < Minitest::Test
     end
   end
 
-  def test_a_batch_collapses_duplicates_and_keeps_bogons_off_the_wire
+  def test_a_batch_without_a_key_is_refused_once_and_its_bogon_still_answered
     client = Staging.client_for(Tiers.unauth, cache: false)
+    before = Staging.facts.length
+
+    results = client.lookup_batch([Staging::PROBE, '10.0.0.1'])
+
+    assert results['10.0.0.1'].bogon?, '10.0.0.1 was not answered locally'
+    refused = results[Staging::PROBE]
+    assert_kind_of VPNDetection::Error, refused, 'a batch without a key must fail'
+    assert_equal [:unauthorized, 401, false], [refused.kind, refused.status, refused.retryable?]
+    assert_equal ['/batch'], Staging.facts[before..].map(&:path), 'one request, never retried'
+  end
+
+  def test_a_batch_collapses_duplicates_and_keeps_bogons_off_the_wire
+    # A batch needs a key, and the free one is the cheapest that has it.
+    reason = Tiers.skip_for(Tiers.free)
+    skip reason if reason
+    client = Staging.client_for(Tiers.free, cache: false)
     before = Staging.facts.length
 
     results = client.lookup_batch([Staging::PROBE, '8.8.8.8', Staging::PROBE, '10.0.0.1', '8.8.8.8'])
@@ -116,6 +132,7 @@ class LookupTest < Minitest::Test
     # wobbling staging cannot read as a failure to deduplicate.
     sent = Staging.facts[before..]
     assert_equal ['/batch'], sent.map(&:path).uniq
+    assert(sent.all? { |fact| fact.tiers.include?('free') }, 'the free key never reached the wire')
     assert_equal [Staging::PROBE, '8.8.8.8'].sort, sent.flat_map(&:ips).uniq.sort
     assert results['10.0.0.1'].bogon?, '10.0.0.1 was not answered locally'
     [Staging::PROBE, '8.8.8.8'].each do |ip|

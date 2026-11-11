@@ -32,6 +32,11 @@ module Tiers
     RUNGS.first
   end
 
+  # The cheapest rung a batch can run on: POST /batch needs a key.
+  def free
+    RUNGS[1]
+  end
+
   def max
     RUNGS.last
   end

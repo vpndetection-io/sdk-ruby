@@ -122,7 +122,7 @@ module Staging
       result = client_for(rung).lookup(PROBE)
       # Checked here rather than in one test, so no comparison anywhere can be
       # made against a tier that silently ran unauthenticated: an unsent key
-      # answers the free shape, which satisfies every containment check
+      # answers the keyless shape, which satisfies every containment check
       # vacuously.
       if rung[:secret] && facts.none? { |fact| fact.tiers.include?(rung[:tier]) }
         raise "#{rung[:tier]}: the key never reached the wire"

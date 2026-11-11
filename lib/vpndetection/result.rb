@@ -24,8 +24,9 @@ module VPNDetection
 
     DETAILS = %w[vpn hosting relay tor cdn resproxy dcproxy mobproxy pubproxy].freeze
 
-    # Where the address is, and the AS announcing it: every keyed answer carries
-    # both, each member present, an empty string or AS 0 where nothing is known.
+    # Where the address is, and the AS announcing it: every answer carries both,
+    # with or without a key, each member present, an empty string or AS 0 where
+    # nothing is known.
     LOCATION = %w[
       continent continent_name country country_name timezone currency_code currency_name currency_symbol
       flag_emoji flag_unicode
@@ -75,7 +76,7 @@ module VPNDetection
     end
 
     # Whether the address belongs to a hosting or cloud provider, or nil when
-    # your plan does not include it. Every paid plan.
+    # your plan does not include it. With any key, a free one included.
     def is_hosting
       @raw['is_hosting']
     end
@@ -86,7 +87,7 @@ module VPNDetection
     end
 
     # Whether the address is a privacy relay egress, or nil when your plan does
-    # not include it. Free and paid plans.
+    # not include it. Every answer, with or without a key.
     def is_relay
       @raw['is_relay']
     end
@@ -97,7 +98,7 @@ module VPNDetection
     end
 
     # Whether the address is a Tor node, or nil when your plan does not include
-    # it. Free and paid plans.
+    # it. Every answer, with or without a key.
     def is_tor
       @raw['is_tor']
     end
@@ -108,7 +109,7 @@ module VPNDetection
     end
 
     # Whether the address belongs to a CDN, or nil when your plan does not
-    # include it. Every paid plan.
+    # include it. With any key, a free one included.
     def is_cdn
       @raw['is_cdn']
     end
@@ -119,7 +120,7 @@ module VPNDetection
     end
 
     # Whether the address was seen in a residential proxy pool, or nil when your
-    # plan does not include it. Every paid plan.
+    # plan does not include it. With any key, a free one included.
     def is_resproxy
       @raw['is_resproxy']
     end
@@ -131,7 +132,7 @@ module VPNDetection
 
     # Whether the address is one a datacenter proxy service sells or runs on, a
     # proxy company's own ranges included, or nil when your plan does not
-    # include it. Every paid plan.
+    # include it. With any key, a free one included.
     def is_dcproxy
       @raw['is_dcproxy']
     end
@@ -142,7 +143,7 @@ module VPNDetection
     end
 
     # Whether the address was seen in a mobile proxy pool, or nil when your plan
-    # does not include it. Every paid plan.
+    # does not include it. With any key, a free one included.
     def is_mobproxy
       @raw['is_mobproxy']
     end
@@ -154,7 +155,7 @@ module VPNDetection
 
     # Whether a public proxy, one anyone can connect through, listens on the
     # address or sends its traffic out from it, or nil when your plan does not
-    # include it. Every paid plan.
+    # include it. With any key, a free one included.
     def is_pubproxy
       @raw['is_pubproxy']
     end
@@ -175,12 +176,12 @@ module VPNDetection
       @raw['hosting']
     end
 
-    # Detail for `is_relay`. Free and paid plans.
+    # Detail for `is_relay`. Every answer, with or without a key.
     def relay
       @raw['relay']
     end
 
-    # Detail for `is_tor`. Free and paid plans.
+    # Detail for `is_tor`. Every answer, with or without a key.
     def tor
       @raw['tor']
     end
@@ -215,15 +216,15 @@ module VPNDetection
     end
 
     # Where the address is: continent, country, timezone, the country's
-    # currency and flag, as a wire hash (`result.location['country']`). Free and
-    # paid plans.
+    # currency and flag, as a wire hash (`result.location['country']`). Every
+    # answer, with or without a key.
     def location
       @raw['location']
     end
 
     # The AS announcing the address: asn, name, domain, type and prefix, as a
-    # wire hash (`result.asn['name']`), with asn 0 where none does. Free and paid
-    # plans.
+    # wire hash (`result.asn['name']`), with asn 0 where none does. Every
+    # answer, with or without a key.
     def asn
       @raw['asn']
     end

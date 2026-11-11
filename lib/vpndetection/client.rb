@@ -23,9 +23,10 @@ module VPNDetection
     # Signing a person in with OAuth, which needs no API key at all.
     attr_reader :oauth
 
-    # @param api_key [String, nil] omit it entirely to use the free tier, which
-    #   answers `ip` and `is_vpn` and allows 1000 requests per day per source
-    #   address. It is trimmed, and a key of blanks alone is no key.
+    # @param api_key [String, nil] omit it to look up without one: a lookup then
+    #   answers `ip`, `is_vpn`, the Tor and relay members, `location` and `asn`,
+    #   up to 60 a minute from each address, and a batch is refused as
+    #   `:unauthorized`. It is trimmed, and a key of blanks alone is no key.
     # @param cache [Boolean] pass false to disable caching.
     # @param cache_ttl [Numeric] how long an answer stays fresh, in seconds.
     # @param concurrency [Integer] batch requests - chunks of up to 1000 addresses - in flight during a batch, from 1.
@@ -166,7 +167,9 @@ module VPNDetection
     # to line two lists up. An address that fails carries its error as its value,
     # so one bad entry cannot lose the rest of the answers: the API reports a
     # per-entry failure with the status the single lookup would have answered,
-    # and a chunk that fails as a whole marks every address in it.
+    # and a chunk that fails as a whole marks every address in it. The batch
+    # endpoint needs an API key, a free one included: without one, every address
+    # sent to it carries an `:unauthorized` error.
     #
     # @param concurrency [Integer, nil] chunks in flight, for THIS batch only.
     #   Anything but an Integer from 1 is refused as `:bad_request` before any

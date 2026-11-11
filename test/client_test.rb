@@ -56,7 +56,9 @@ class ClientTest < Minitest::Test
   end
 
   def test_a_429_without_retry_after_is_never_retried
-    calls = stub_lookups('1.1.1.1' => { status: 429, body: { 'error' => 'daily limit exceeded' } })
+    calls = stub_lookups('1.1.1.1' => {
+      status: 429, body: { 'error' => 'monthly request allowance spent; upgrade your plan for more lookups' }
+    })
     client = VPNDetection::Client.new(retries: 2)
 
     error = assert_raises(VPNDetection::Error) { client.lookup('1.1.1.1') }
