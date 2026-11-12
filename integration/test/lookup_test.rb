@@ -154,7 +154,8 @@ class LookupTest < Minitest::Test
     client = Staging.client_for(Tiers.unauth, cache: false)
     before = Staging.facts.length
 
-    results = client.lookup_batch([Staging::PROBE, '10.0.0.1'])
+    # Two addresses on the wire: a keyless batch of one is answered as its lookup.
+    results = client.lookup_batch([Staging::PROBE, '8.8.8.8', '10.0.0.1'])
 
     assert results['10.0.0.1'].bogon?, '10.0.0.1 was not answered locally'
     refused = results[Staging::PROBE]
