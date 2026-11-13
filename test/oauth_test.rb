@@ -174,6 +174,47 @@ class OauthTest < Minitest::Test
     assert_nil error.status, 'expired locally'
   end
 
+  # A timer can wake before the clock has moved its whole delay, so a wait that ran
+  # to the deadline must end the poll unread: on 5.14.1 a clock lagging half a
+  # millisecond read the deadline as not yet reached and sent one more request.
+  def test_a_wait_cut_to_the_deadline_ends_the_poll_though_the_clock_lags
+    pending = { 'status' => 400, 'body' => { 'error' => 'authorization_pending' } }
+    { [5, 5] => [[5], 0], [5, 2] => [[2], 0], [2, 5] => [[2, 2], 2] }.each do |(interval, expires_in), (waits, sent)|
+      api = keyless([pending] * 3).oauth
+      clock = FakeClock.new(short: 0.0005).install(api)
+      device = VPNDetection::DeviceAuthorization.build_from_hash(
+        OAUTH['poll']['cases'].first['device'].merge('interval' => interval, 'expires_in' => expires_in),
+      )
+
+      kind, error = bounded { api.poll_device_token(CLIENT_ID, device) }
+
+      label = "interval #{interval}, expires_in #{expires_in}"
+      assert_equal waits, clock.waits.first(waits.length), label
+      assert_in_delta expires_in - waits.sum, clock.waits.drop(waits.length).sum, 0.01, "#{label}: the rest of the time" if sent.positive?
+      assert_equal sent, @origin.requests.length, "#{label}: requests"
+      assert_equal :error, kind, label
+      assert_instance_of VPNDetection::OauthExpiredTokenError, error, label
+    end
+  end
+
+  # NaN compares false with everything, so a hand-built lifetime of NaN is no time
+  # left: through 5.14.1 `[NaN, 0].max` raised a raw ArgumentError.
+  def test_a_lifetime_that_is_not_a_number_expires_the_poll_unsent
+    [Float::NAN, -Float::NAN].each do |expires_in|
+      api = keyless([{ 'status' => 400, 'body' => { 'error' => 'authorization_pending' } }]).oauth
+      clock = FakeClock.new.install(api)
+      device = VPNDetection::DeviceAuthorization.new(device_code: 'dc', user_code: 'UC', verification_uri: 'https://x/d',
+                                                     expires_in: expires_in, interval: 1)
+
+      kind, error = bounded { api.poll_device_token(CLIENT_ID, device) }
+
+      assert_equal [0], clock.waits, 'one wait, of nothing'
+      assert_empty @origin.requests, 'and no request'
+      assert_equal :error, kind
+      assert_instance_of VPNDetection::OauthExpiredTokenError, error
+    end
+  end
+
   # `sleep` raised RangeError for 2**66 (measured on 5.4.1, a poll whose
   # expires_in was 2**70), so a wait longer than it takes goes in parts.
   def test_a_wait_longer_than_ruby_sleeps_is_taken_in_parts
@@ -552,9 +593,12 @@ class FakeClock
 
   attr_reader :waits
 
-  def initialize
+  # `short:` is how far short of each wait the clock moves, as a timer that wakes
+  # early leaves it.
+  def initialize(short: 0)
     @now = 0.0
     @waits = []
+    @short = short
   end
 
   def install(api)
@@ -570,7 +614,7 @@ class FakeClock
   def wait(seconds)
     @waits << seconds
     sleep if @waits.length > CAP
-    @now += seconds
+    @now += seconds - @short
   end
 end
 

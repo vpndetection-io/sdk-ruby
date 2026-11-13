@@ -212,11 +212,18 @@ module VPNDetection
       interval = device.interval >= 1 ? device.interval : 5
       deadline = @now.call + device.expires_in
       loop do
-        # A wait that would end past the deadline waits only the time left, never
-        # a negative remainder, and the local expiry below follows with no request.
+        # A wait that would end past the deadline waits only the time left, and the
+        # local expiry follows with no request. A remainder not above 0 is none
+        # left: a hand-built `expires_in` of NaN compares false with everything, and
+        # `[NaN, 0].max` raised a raw ArgumentError (5.14.1).
         left = deadline - @now.call
-        @wait.call(interval < left ? interval : [left, 0].max)
-        raise OauthExpiredTokenError, 'expired_token' if @now.call >= deadline
+        left = 0 unless left.positive?
+        to_deadline = left <= interval
+        @wait.call(to_deadline ? left : interval)
+        # A wait that ran to the deadline ends the poll without reading the clock
+        # again: a timer can wake before the clock has moved its whole delay, and
+        # one more request would then go out at the deadline.
+        raise OauthExpiredTokenError, 'expired_token' if to_deadline || @now.call >= deadline
 
         begin
           return exchange_device_code(client_id, device.device_code, timeout: timeout)
