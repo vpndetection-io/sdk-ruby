@@ -2,6 +2,14 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.14.2 - 2026-11-13
+
+### Fixes
+
+- End a device poll at its deadline with no request past it ([`1a00833`](https://github.com/vpndetection-io/sdk-ruby/commit/1a00833d2f3aa2665f6ed56cecaa71c8111f8f34))
+- Re-pin the spec to 2026.11.12: plainer words on the 401 and the batch rate limit ([`e92f4e8`](https://github.com/vpndetection-io/sdk-ruby/commit/e92f4e8fa1ce6f10a945c6d14faef76924daea8f))
+- Say that a batch request of one address is answered as its lookup ([`e396dc8`](https://github.com/vpndetection-io/sdk-ruby/commit/e396dc8180087b3db85e6e9cea912088fd1ea6ff))
+
 ## 5.14.1 - 2026-11-11
 
 ### Fixes
