@@ -46,6 +46,20 @@ class ClientTest < Minitest::Test
     assert_raises(FrozenError) { result.raw['is_vpn'] = false }
   end
 
+  def test_a_served_is_bogon_reaches_the_result
+    stub_lookups(
+      '8.8.8.8' => { body: { 'ip' => '8.8.8.8', 'is_bogon' => true, 'is_vpn' => false } },
+      '8.8.4.4' => { body: { 'ip' => '8.8.4.4', 'is_bogon' => false, 'is_vpn' => false } }
+    )
+    client = VPNDetection::Client.new(cache: false)
+
+    assert client.lookup('8.8.8.8').bogon?
+    refute client.lookup('8.8.4.4').bogon?
+    batch = client.lookup_batch(['8.8.8.8', '8.8.4.4'])
+    assert batch['8.8.8.8'].bogon?
+    refute batch['8.8.4.4'].bogon?
+  end
+
   def test_a_404_is_never_retried
     calls = stub_lookups('1.1.1.1' => { status: 404, body: { 'rc' => 'NOT_FOUND' } })
     client = VPNDetection::Client.new(retries: 2)

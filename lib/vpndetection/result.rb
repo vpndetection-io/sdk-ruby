@@ -39,7 +39,7 @@ module VPNDetection
     # the address.
     attr_reader :raw
 
-    def initialize(raw, bogon: false)
+    def initialize(raw, bogon: raw['is_bogon'] == true)
       @raw = deep_freeze(raw)
       @bogon = bogon
       freeze
@@ -50,7 +50,9 @@ module VPNDetection
       @raw['ip']
     end
 
-    # Set when this answer was computed locally rather than served. Always
+    # Whether the address is reserved space (private, loopback, documentation
+    # and the like), which this library answers locally without a request. A
+    # served answer carries the API's own `is_bogon`, which this reads. Always
     # `true` or `false`.
     def bogon?
       @bogon
