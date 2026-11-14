@@ -19,14 +19,14 @@ module Staging
   # What a POPULATED detail object carries on every tier, and the max-only
   # remainder, which is absent rather than empty on a lower plan.
   MEMBERS = {
-    'vpn' => { required: %w[provider last_seen], optional: %w[confidence method] },
-    'hosting' => { required: %w[provider confidence last_seen] },
-    'relay' => { required: %w[provider confidence last_seen] },
-    'tor' => { required: %w[provider confidence last_seen] },
-    'cdn' => { required: %w[provider confidence last_seen] },
-    'resproxy' => { required: %w[provider first_seen last_seen hits hits_days_pct providers_num] },
-    'dcproxy' => { required: %w[provider first_seen last_seen hits hits_days_pct providers_num] },
-    'mobproxy' => { required: %w[provider first_seen last_seen hits hits_days_pct providers_num] },
+    'vpn' => { required: %w[provider provider_name last_seen], optional: %w[confidence method] },
+    'hosting' => { required: %w[provider provider_name confidence last_seen] },
+    'relay' => { required: %w[provider provider_name confidence last_seen] },
+    'tor' => { required: %w[provider provider_name confidence last_seen] },
+    'cdn' => { required: %w[provider provider_name confidence last_seen] },
+    'resproxy' => { required: %w[provider provider_name first_seen last_seen hits hits_days_pct providers_num] },
+    'dcproxy' => { required: %w[provider provider_name first_seen last_seen hits hits_days_pct providers_num] },
+    'mobproxy' => { required: %w[provider provider_name first_seen last_seen hits hits_days_pct providers_num] },
   }.freeze
 
   # What a test is allowed to remember about a request it made.
