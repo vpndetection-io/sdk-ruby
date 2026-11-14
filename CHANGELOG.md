@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.15.0 - 2026-11-14
+
+### Features
+
+- Re-pin the spec to 2026.11.14: is_bogon on every answer, and provider_name beside each provider ([`2e70f5d`](https://github.com/vpndetection-io/sdk-ruby/commit/2e70f5d987131359d4b7737f98c00eb0737c980b))
+
 ## 5.14.2 - 2026-11-13
 
 ### Fixes
