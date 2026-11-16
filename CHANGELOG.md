@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.16.0 - 2026-11-16
+
+### Features
+
+- Read the plan's name, and hand back a vocabulary value as served ([`1a6b4a7`](https://github.com/vpndetection-io/sdk-ruby/commit/1a6b4a76a910fe0b61e9a5bd854bf5b968bfa42c))
+
 ## 5.15.0 - 2026-11-14
 
 ### Features
