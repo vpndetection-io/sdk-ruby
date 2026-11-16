@@ -318,7 +318,7 @@ module VPNDetection
       'BatchLookupError' => %i[status error],
       'Entitlement' => %i[org_id apikey plan usage],
       'EntitlementApikey' => %i[id expires allowed_cidrs],
-      'EntitlementPlan' => %i[key tier],
+      'EntitlementPlan' => %i[key name tier],
       'EntitlementUsage' => %i[requests quota hard_limit window_start window_end],
       'DatabaseList' => %i[databases],
       'Database' => %i[base name summary license_type starts expires renews_at notice_due_at in_term standing

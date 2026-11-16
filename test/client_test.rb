@@ -244,7 +244,9 @@ class ClientTest < Minitest::Test
       'requests of "1"' => ENTITLEMENT_BODY.merge('usage' => usage.merge('requests' => '1')),
       'a null CIDR' => ENTITLEMENT_BODY.merge('apikey' => apikey.merge('allowed_cidrs' => [nil])),
       'CIDRs of null' => ENTITLEMENT_BODY.merge('apikey' => apikey.merge('allowed_cidrs' => nil)),
-      'a tier of 3' => ENTITLEMENT_BODY.merge('plan' => { 'key' => 'max', 'tier' => 3 }),
+      'a tier of 3' => ENTITLEMENT_BODY.merge('plan' => { 'key' => 'max', 'name' => 'Max', 'tier' => 3 }),
+      'a name of 3' => ENTITLEMENT_BODY.merge('plan' => { 'key' => 'max', 'name' => 3, 'tier' => 'max' }),
+      'no name' => ENTITLEMENT_BODY.merge('plan' => { 'key' => 'max', 'tier' => 'max' }),
       'a window_start of "10:00"' => ENTITLEMENT_BODY.merge('usage' => usage.merge('window_start' => '10:00')),
       'a window_start with no zone' => ENTITLEMENT_BODY.merge('usage' => usage.merge('window_start' => '2026-09-04T07:00:00')),
     }.each { |name, body| answers["my_entitlement, #{name}"] = [-> { client.my_entitlement }, body] }
@@ -651,7 +653,7 @@ class ClientTest < Minitest::Test
       'expires' => nil,
       'allowed_cidrs' => [],
     },
-    'plan' => { 'key' => 'max', 'tier' => 'max' },
+    'plan' => { 'key' => 'max', 'name' => 'Max', 'tier' => 'max' },
     'usage' => {
       'requests' => 580,
       'quota' => 5_000_000,
@@ -684,6 +686,7 @@ class ClientTest < Minitest::Test
     ent = VPNDetection::Client.new.my_entitlement
 
     assert_equal 'max', ent.plan.key
+    assert_equal 'Max', ent.plan.name
     assert_equal 'max', ent.plan.tier
     assert_equal 580, ent.usage.requests
     assert_equal 5_000_000, ent.usage.quota

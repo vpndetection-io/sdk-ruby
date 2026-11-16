@@ -247,4 +247,38 @@ class ConformanceTest < Minitest::Test
 
     assert_equal 2, calls.length
   end
+
+  # list and downloads unwrap their envelope, so the answer is wrapped back
+  # under its wire name for the corpus's paths.
+  VOCABULARY_CALLS = {
+    'myEntitlement' => ['/api/v1/entitlement', ->(client) { client.my_entitlement }],
+    'listDatabases' => ['/api/v1/database/list', ->(client) { Struct.new(:databases).new(client.database.list) }],
+    'listDownloads' => ['/api/v1/database/downloads', ->(client) { Struct.new(:downloads).new(client.database.downloads) }],
+  }.freeze
+
+  def test_a_closed_vocabulary_hands_back_a_value_it_was_not_built_with
+    cases = CORPUS.fetch('vocabulary').fetch('cases')
+    assert_operator cases.length, :>=, 6
+
+    cases.each do |c|
+      path, call = VOCABULARY_CALLS.fetch(c['call'])
+      Typhoeus.stub("#{BASE_URL}#{path}").and_return(json_response(200, c['answer']))
+      answer = call.call(VPNDetection::Client.new(api_key: 'k', retries: 0))
+
+      c['expect'].each do |member, value|
+        assert_equal value, read_member(answer, member), "#{c['name']}: #{member}"
+      end
+      Typhoeus::Expectation.clear
+    end
+  end
+
+  private
+
+  # Walks a path of wire names through a typed answer: a list's index, or the
+  # generated model's reader of that name.
+  def read_member(answer, path)
+    path.split('.').reduce(answer) do |value, step|
+      step.match?(/\A\d+\z/) ? value.fetch(Integer(step)) : value.public_send(step)
+    end
+  end
 end

@@ -96,8 +96,28 @@ function deprecate_authorization_api() {
     fi
 }
 
+# A value the API adds to a closed vocabulary in an ANSWER (a tier, a standing,
+# a license type, a format, an outcome) comes back as served. The generated
+# readers refuse one: a named enum's build_from_hash raises, and an inline
+# enum's setter fails, so the whole answer was a server_error, in every installed
+# release, the day the API added a value. Transport.check_type! still refuses a
+# wrong TYPE, and DatabaseApi#check_format! still refuses an unpublished format
+# in a request before the network.
+function open_response_enums() {
+    local models=.gen/lib/vpndetection/models
+    perl -0pi \
+        -e 's/^      return value if (\w+)\.all_vars\.include\?\(value\)\n      raise "Invalid ENUM value #\{value\} for class #\1"\n/      value\n/mg;' \
+        -e 's/^      validator = EnumAttributeValidator\.new\([^\n]*\n      unless validator\.valid\?\(\w+\)\n        fail ArgumentError, "invalid value for [^\n]*\n      end\n//mg' \
+        "$models"/*.rb
+    if grep -q -e 'Invalid ENUM value' -e '^      validator = EnumAttributeValidator' "$models"/*.rb ; then
+        echo "could not open the response enums: a generated reader changed shape" >&2
+        exit 1
+    fi
+}
+
 patch_rails_constant
 deprecate_authorization_api
+open_response_enums
 rm -rf lib/vpndetection/{api,models} lib/vpndetection/{api_client,api_error,api_model_base,configuration}.rb
 cp -R .gen/lib/vpndetection/api lib/vpndetection/api
 cp -R .gen/lib/vpndetection/models lib/vpndetection/models
