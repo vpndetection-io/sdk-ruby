@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.17.0 - 2026-11-18
+
+### Features
+
+- Read cap_reached past a paid plan's overage cap, and re-pin the spec ([`c5785d5`](https://github.com/vpndetection-io/sdk-ruby/commit/c5785d5081686a536853b24c4a21c4b7421e4cfc))
+
 ## 5.16.0 - 2026-11-16
 
 ### Features
