@@ -19,7 +19,7 @@ Or add it to your Gemfile:
 gem 'vpndetection'
 ```
 
-Requires Ruby 3.3 or newer.
+Requires Ruby 3.3 or newer, and libcurl at runtime, which the `curl` package brings on Debian and Alpine.
 
 ## Usage
 
