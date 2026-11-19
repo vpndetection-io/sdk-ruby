@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.17.1 - 2026-11-19
+
+### Fixes
+
+- Re-pin the spec to 2026.11.18: a key over plain HTTP is refused ([`db9bf49`](https://github.com/vpndetection-io/sdk-ruby/commit/db9bf49a9ed9c3e64bfef621261f0b500f10c1b6))
+
 ## 5.17.0 - 2026-11-18
 
 ### Features
