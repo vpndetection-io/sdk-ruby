@@ -212,7 +212,7 @@ raise 'no API key was picked' if token.apikey.nil?
 keyed = VPNDetection::Client.new(api_key: token.apikey)
 ```
 
-`poll_device_token` raises `VPNDetection::OauthAccessDeniedError` when the person refuses and `VPNDetection::OauthExpiredTokenError` when the code expires first. Client IDs are issued on request from support@vpndetection.io, and `client.oauth.revoke('your-client-id', token.refresh_token)` signs the machine out.
+`poll_device_token` raises `VPNDetection::OauthAccessDeniedError` when the person refuses and `VPNDetection::OauthExpiredTokenError` when the code expires first. `client.oauth.revoke('your-client-id', token.refresh_token)` signs the machine out. Only a client we registered, such as our CLI, can use the device flow: an app of your own signs people in with the authorization code flow below.
 
 ### Sign in with OAuth (authorization code)
 
