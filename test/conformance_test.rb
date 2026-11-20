@@ -11,6 +11,18 @@ require_relative 'test_helper'
 class ConformanceTest < Minitest::Test
   include TestHelper
 
+  # The keys of a lookup case's `expect` that say how to read the rest.
+  EXPECT_KEYS = %w[ip isBogon present absent emptyPresent].freeze
+
+  # The keys of a lookup case's `expect` that each give one member's whole value.
+  EXPECT_VALUES = %w[
+    vpn hosting dcproxy pubproxy location asn carrier satellite ssh smtp web dns_resolver bittorrent company
+    abuse hostname
+  ].freeze
+
+  # The members `bogonResponse` gives a whole value for.
+  BOGON_VALUES = %w[location asn web hostname company abuse].freeze
+
   def setup
     # Anything not stubbed raises instead of reaching the network, so a test
     # that claims no request was made cannot pass by accident.
@@ -81,8 +93,10 @@ class ConformanceTest < Minitest::Test
     CORPUS['bogonResponse']['emptyObjects'].each do |detail|
       assert_equal({}, result.public_send(detail), "#{detail} must be present and empty")
     end
-    %w[location asn].each do |object|
-      assert_equal CORPUS['bogonResponse'][object], result.public_send(object), object
+    BOGON_VALUES.each do |member|
+      assert CORPUS['bogonResponse'].key?(member), "the corpus's bogon gives #{member}"
+      assert result.included?(member), "#{member} must be present"
+      assert_equal CORPUS['bogonResponse'][member], result.public_send(member), member
     end
     assert_empty calls, 'a bogon must not reach the network'
   end
@@ -114,10 +128,15 @@ class ConformanceTest < Minitest::Test
       (c['expect']['emptyPresent'] || []).each do |field|
         assert_equal({}, result.public_send(field), "#{c['name']}: #{field} must be present and empty")
       end
-      %w[vpn hosting dcproxy pubproxy location asn].each do |detail|
-        next if c['expect'][detail].nil?
+      # A key this runner does not know would otherwise pass without being read.
+      c['expect'].each_key do |key|
+        assert_includes EXPECT_KEYS + EXPECT_VALUES, key, "#{c['name']}: #{key} is not asserted"
+      end
+      EXPECT_VALUES.each do |member|
+        next unless c['expect'].key?(member)
 
-        assert_equal c['expect'][detail], result.public_send(detail), "#{c['name']}: #{detail}"
+        assert result.included?(member), "#{c['name']}: #{member} must be present"
+        assert_equal c['expect'][member], result.public_send(member), "#{c['name']}: #{member}"
       end
 
       Typhoeus::Expectation.clear
