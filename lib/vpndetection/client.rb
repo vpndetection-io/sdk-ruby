@@ -27,7 +27,8 @@ module VPNDetection
     #   plan: `ip`, `is_vpn`, the Tor and relay members, `location` and `asn`, with
     #   no daily or monthly cap. A batch needs a key on a paid plan. It is trimmed, and a key of blanks alone is no key.
     # @param cache [Boolean] pass false to disable caching.
-    # @param cache_ttl [Numeric] how long an answer stays fresh, in seconds.
+    # @param cache_ttl [Numeric] how long an answer stays fresh, in seconds; an
+    #   answer marked trial_expired or cap_reached stays a minute at most.
     # @param concurrency [Integer] batch requests - chunks of up to 1000 addresses - in flight during a batch, from 1.
     # @param retries [Integer] extra attempts for a transient failure, from 0. Each
     #   waits the server's `Retry-After` when it sent one of at most about 24.8
