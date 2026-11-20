@@ -402,8 +402,8 @@ module VPNDetection
     end
 
     # On answers to a key on the free plan only: false while its organization's
-    # daily trial lasts (every field for the first 100 lookups each UTC day), true
-    # once the answer has Unlimited's; nil on any other answer.
+    # trial of every field lasts, true once the answer has Unlimited's; nil on any
+    # other answer.
     def trial_expired
       @raw['trial_expired']
     end

@@ -70,8 +70,8 @@ class LookupTest < Minitest::Test
     raw = Staging.answer_for(Tiers.trial)[:raw]
 
     assert_includes [true, false], raw['trial_expired'], 'a free-plan key answers trial_expired'
-    # The organization's first 100 lookups of the UTC day are answered in full,
-    # and the rest as Unlimited's: which half a run sees depends on the day.
+    # While the organization's trial lasts its lookups are answered in full, and
+    # after it as Unlimited's: which a run sees depends on the trial.
     assert_equal !raw['trial_expired'], raw.key?('is_hosting')
   end
 
