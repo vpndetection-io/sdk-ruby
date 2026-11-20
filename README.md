@@ -23,7 +23,7 @@ Requires Ruby 3.3 or newer, and libcurl at runtime, which the `curl` package bri
 
 ## Usage
 
-**No API key needed to start.** Unlimited, the free plan, answers `ip`, `is_vpn`, Tor and relay detection, `location` and `asn`, with no daily or monthly cap, with a key or without one.
+**No API key needed to start.** Unlimited, the free plan, answers `ip`, `is_vpn`, Tor and relay detection, `is_anycast`, `hostname` (the reverse DNS name), country-level `location` and `asn` with the AS's country and RPKI status, with no daily or monthly cap, with a key or without one.
 
 ```ruby
 require 'vpndetection'
@@ -38,7 +38,7 @@ result.asn['name']          # who runs the announcing network
 
 ### With an API key
 
-Every paid plan answers every field: `is_hosting`, `is_cdn` and the four proxy flags as well, and the provider (its ID and its name), confidence and last-seen detail behind each flag. The plans differ only in how many lookups they include, and a free account tries every field. Create a key in the [console](https://app.vpndetection.io), then pass it in:
+Every paid plan answers every field: `is_hosting`, `is_cdn` and the four proxy flags as well, the carrier and satellite flags, the five service flags (SSH, SMTP, web, DNS resolver and BitTorrent), city-level `location`, the `company` and the `abuse` contact, and the provider (its ID and its name), confidence and last-seen detail behind each flag. The plans differ only in how many lookups they include, and a free account tries every field. Create a key in the [console](https://app.vpndetection.io), then pass it in:
 
 ```ruby
 client = VPNDetection::Client.new(api_key: ENV['VPNDETECTION_API_KEY'])
@@ -68,7 +68,7 @@ acct.usage.requests    # => 580
 acct.usage.window_end  # => when the allowance resets
 ```
 
-Usage counts against the anniversary of your subscription on a paid plan, not the calendar month and not the billing period, and against the UTC day on the free plan; it is the same number a lookup is gated on. `hard_limit` is `nil` on an uncapped plan, which is not the same as zero.
+Usage counts against the anniversary of your subscription on a paid plan, not the calendar month and not the billing period, and on the free plan it counts the trial's lookups answered with every field; it is the same number a lookup is gated on. `hard_limit` is `nil` on an uncapped plan, which is not the same as zero.
 
 Show `plan.name` and compare against `plan.key`: a plan's name can change, and its key never does. A value the API adds later to a plan's `tier`, a database's `standing` or `license_type`, a format or a download's `outcome` comes back as the string it served (from 5.16.0), so check for the values you know rather than assuming the list is complete.
 
@@ -246,7 +246,7 @@ Each redirect URI must be https on a public host name, or http on a loopback add
 
 ### Absent is not false
 
-Unlimited leaves out `is_hosting`, `is_cdn` and the four proxy flags, and of the detail behind each flag it answers only Tor's and relay's; a free-plan key's answer carries `trial_expired`, true once its trial is spent, and a paid key's carries `cap_reached`, true once its organization's overage cap is reached and the answer has Unlimited's. A field is present when your plan includes it and `nil` when it does not. `nil` means "not in your plan"; `false` means "we checked, and no".
+Unlimited leaves out `is_hosting`, `is_cdn`, the four proxy flags, the carrier, satellite and service flags, `company` and `abuse`, and of the detail behind each flag it answers only Tor's and relay's; a free-plan key's answer carries `trial_expired`, true once its trial is spent, and a paid key's carries `cap_reached`, true once its organization's overage cap is reached and the answer has Unlimited's. A field is present when your plan includes it and `nil` when it does not. `nil` means "not in your plan"; `false` means "we checked, and no".
 
 ```ruby
 result.hosting?                 # false when absent, for when you only want the flag

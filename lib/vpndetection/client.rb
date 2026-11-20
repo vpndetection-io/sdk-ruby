@@ -24,8 +24,8 @@ module VPNDetection
     attr_reader :oauth
 
     # @param api_key [String, nil] without one a lookup is on Unlimited, the free
-    #   plan: `ip`, `is_vpn`, the Tor and relay members, `location` and `asn`, with
-    #   no daily or monthly cap. A batch needs a key on a paid plan. It is trimmed, and a key of blanks alone is no key.
+    #   plan: `ip`, `is_vpn`, the Tor and relay members, `is_anycast`, `hostname`,
+    #   `location` and `asn`, with no daily or monthly cap. A batch needs a key on a paid plan. It is trimmed, and a key of blanks alone is no key.
     # @param cache [Boolean] pass false to disable caching.
     # @param cache_ttl [Numeric] how long an answer stays fresh, in seconds; an
     #   answer marked trial_expired or cap_reached stays a minute at most.
