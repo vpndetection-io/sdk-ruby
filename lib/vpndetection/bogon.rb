@@ -31,9 +31,14 @@ module VPNDetection
       addr&.ipv4_mapped? ? addr.native.to_s : ip
     end
 
+    # The location members a bogon answers 0 rather than an empty string, as the
+    # API does.
+    BOGON_ZEROS = { 'latitude' => 0, 'longitude' => 0, 'accuracy_radius' => 0 }.freeze
+
     # The answer a bogon gets, in the full shape the API serves at its widest
     # plan: every flag present and false, every detail object present and empty,
-    # and a location and AS of empty strings and AS 0.
+    # `web` an empty list, an empty hostname, and a location, AS, company and
+    # abuse contact of empty strings, zeros and false.
     #
     # `is_bogon` marks it as computed rather than served. Note this is
     # deliberately the WIDEST shape regardless of your plan, so do not infer
@@ -42,8 +47,12 @@ module VPNDetection
       raw = { 'ip' => ip, 'is_bogon' => true }
       Result::FLAGS.each { |flag| raw[flag] = false }
       Result::DETAILS.each { |detail| raw[detail] = {} }
-      raw['location'] = Result::LOCATION.to_h { |member| [member, ''] }
+      Result::DETAIL_LISTS.each { |detail| raw[detail] = [] }
+      raw['location'] = Result::LOCATION.to_h { |member| [member, BOGON_ZEROS.fetch(member, '')] }
       raw['asn'] = Result::ASN.to_h { |member| [member, member == 'asn' ? 0 : ''] }
+      raw['company'] = Result::COMPANY.to_h { |member| [member, ''] }
+      raw['hostname'] = ''
+      raw['abuse'] = Result::ABUSE.to_h { |member| [member, member == 'validated' ? false : ''] }
       Result.new(raw, bogon: true)
     end
 

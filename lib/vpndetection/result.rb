@@ -13,26 +13,43 @@ module VPNDetection
   # use the predicate (`hosting?`) when you only care whether the address is
   # flagged. A predicate always answers `true` or `false`, never `nil`.
   #
-  # A detail object that is present but empty (`{}`) means the flag above it is
-  # false. A populated one always carries every one of its keys. Details are the
+  # A detail object that is present but empty (`{}`, or `web`'s `[]`) means the
+  # flag above it is false. A populated one always carries every one of its keys. Details are the
   # wire hashes with their original string keys, so `result.vpn['provider']`.
   class Result
     FLAGS = %w[
       is_vpn is_hosting is_relay is_tor is_cdn is_resproxy is_dcproxy is_mobproxy
-      is_pubproxy
+      is_pubproxy is_anycast is_carrier is_satellite is_ssh is_smtp is_web is_dns_resolver
+      is_bittorrent
     ].freeze
 
-    DETAILS = %w[vpn hosting relay tor cdn resproxy dcproxy mobproxy pubproxy].freeze
+    # The detail object behind each flag that has one; `is_anycast` has none.
+    DETAILS = %w[
+      vpn hosting relay tor cdn resproxy dcproxy mobproxy pubproxy carrier satellite ssh smtp dns_resolver
+      bittorrent
+    ].freeze
+
+    # The details that are a list of rows rather than one object.
+    DETAIL_LISTS = %w[web].freeze
 
     # Where the address is, and the AS announcing it: every answer carries both,
     # with or without a key, each member present, an empty string or AS 0 where
-    # nothing is known.
+    # nothing is known. The location's finer members, from `region` down, are a
+    # paid plan's, and absent on an answer without them.
     LOCATION = %w[
       continent continent_name country country_name timezone currency_code currency_name currency_symbol
-      flag_emoji flag_unicode
+      flag_emoji flag_unicode region region_code city postal_code latitude longitude accuracy_radius
+      geoname_id dma_code last_changed
     ].freeze
 
-    ASN = %w[asn name domain type prefix].freeze
+    ASN = %w[asn name domain type prefix country rpki_status].freeze
+
+    # Who uses the address, and where to report abuse from it: a paid plan's,
+    # each member present whenever the object is, an empty string where no
+    # record covers the address.
+    COMPANY = %w[name domain type country].freeze
+
+    ABUSE = %w[email name phone address country network validated unvalidated_since].freeze
 
     # The response exactly as it came off the wire, with its original names.
     # Frozen, because the cache hands this same object to every later caller of
@@ -167,6 +184,95 @@ module VPNDetection
       @raw['is_pubproxy'] == true
     end
 
+    # Whether the address is announced from many places at once, as a public
+    # DNS resolver's or a CDN's edge is, or nil when your plan does not include
+    # it. Every answer, with or without a key.
+    def is_anycast
+      @raw['is_anycast']
+    end
+
+    # `is_anycast` with an absent member read as false.
+    def anycast?
+      @raw['is_anycast'] == true
+    end
+
+    # Whether the address is a mobile carrier's, where many phones can share one
+    # address, or nil when your plan does not include it. On every paid plan.
+    def is_carrier
+      @raw['is_carrier']
+    end
+
+    # `is_carrier` with an absent member read as false.
+    def carrier?
+      @raw['is_carrier'] == true
+    end
+
+    # Whether the address is a satellite operator's, or nil when your plan does
+    # not include it. On every paid plan.
+    def is_satellite
+      @raw['is_satellite']
+    end
+
+    # `is_satellite` with an absent member read as false.
+    def satellite?
+      @raw['is_satellite'] == true
+    end
+
+    # Whether an SSH server answered on the address, or nil when your plan does
+    # not include it. On every paid plan.
+    def is_ssh
+      @raw['is_ssh']
+    end
+
+    # `is_ssh` with an absent member read as false.
+    def ssh?
+      @raw['is_ssh'] == true
+    end
+
+    # Whether a mail server answered on the address, or nil when your plan does
+    # not include it. On every paid plan.
+    def is_smtp
+      @raw['is_smtp']
+    end
+
+    # `is_smtp` with an absent member read as false.
+    def smtp?
+      @raw['is_smtp'] == true
+    end
+
+    # Whether a web server answered on the address, on port 80 or 443, or nil
+    # when your plan does not include it. On every paid plan.
+    def is_web
+      @raw['is_web']
+    end
+
+    # `is_web` with an absent member read as false.
+    def web?
+      @raw['is_web'] == true
+    end
+
+    # Whether an open DNS resolver answered on the address, or nil when your
+    # plan does not include it. On every paid plan.
+    def is_dns_resolver
+      @raw['is_dns_resolver']
+    end
+
+    # `is_dns_resolver` with an absent member read as false.
+    def dns_resolver?
+      @raw['is_dns_resolver'] == true
+    end
+
+    # Whether a BitTorrent client was seen on the address in the last 90 days,
+    # or nil when your plan does not include it. On every paid plan.
+    def is_bittorrent
+      @raw['is_bittorrent']
+    end
+
+    # `is_bittorrent` with an absent member read as false.
+    def bittorrent?
+      @raw['is_bittorrent'] == true
+    end
+
     # Detail for `is_vpn`: provider, last_seen and confidence. Every paid plan.
     # `method` is deprecated: no plan is answered with it since 2026-10-20.
     def vpn
@@ -217,18 +323,82 @@ module VPNDetection
       @raw['pubproxy']
     end
 
+    # Detail for `is_carrier`: name, mcc, mnc, country and confidence. Every
+    # paid plan.
+    def carrier
+      @raw['carrier']
+    end
+
+    # Detail for `is_satellite`: provider, provider_name, orbit, segment,
+    # country, asn and confidence. Every paid plan.
+    def satellite
+      @raw['satellite']
+    end
+
+    # Detail for `is_ssh`: port, banner, host_key_fp, session_ok, first_seen and
+    # last_seen. Every paid plan.
+    def ssh
+      @raw['ssh']
+    end
+
+    # Detail for `is_smtp`: port, banner, session_ok, first_seen and last_seen.
+    # Every paid plan.
+    def smtp
+      @raw['smtp']
+    end
+
+    # Detail for `is_web`: a row per port that answered, lowest first, and `[]`
+    # when the flag is false. Every paid plan.
+    def web
+      @raw['web']
+    end
+
+    # Detail for `is_dns_resolver`: port, recursion_available, rcode,
+    # answer_correct, first_seen and last_seen. Every paid plan.
+    def dns_resolver
+      @raw['dns_resolver']
+    end
+
+    # Detail for `is_bittorrent`: verified, id_matches_ip, first_seen,
+    # last_seen, last_reachable, days_seen, num_ports, peak_num_ports, indexer
+    # and clients. Every paid plan.
+    def bittorrent
+      @raw['bittorrent']
+    end
+
     # Where the address is: continent, country, timezone, the country's
     # currency and flag, as a wire hash (`result.location['country']`). Every
-    # answer, with or without a key.
+    # answer, with or without a key; the region, city, postal code, coordinates
+    # and the rest of the finer members on every paid plan.
     def location
       @raw['location']
     end
 
-    # The AS announcing the address: asn, name, domain, type and prefix, as a
-    # wire hash (`result.asn['name']`), with asn 0 where none does. Every
+    # The AS announcing the address: asn, name, domain, type, prefix, the
+    # country its registry assigned it to and the announcement's RPKI status, as
+    # a wire hash (`result.asn['name']`), with asn 0 where none does. Every
     # answer, with or without a key.
     def asn
       @raw['asn']
+    end
+
+    # Who uses the address: name, domain, type and country, as a wire hash.
+    # Every paid plan.
+    def company
+      @raw['company']
+    end
+
+    # The name the address's reverse DNS (PTR) record points to, an empty string
+    # when it has none. Every answer, with or without a key.
+    def hostname
+      @raw['hostname']
+    end
+
+    # Where to report abuse from the address: email, name, phone, address,
+    # country, network, validated and unvalidated_since, as a wire hash. Every
+    # paid plan.
+    def abuse
+      @raw['abuse']
     end
 
     # On answers to a key on the free plan only: false while its organization's
