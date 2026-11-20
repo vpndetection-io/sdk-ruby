@@ -27,6 +27,35 @@ module Staging
     'resproxy' => { required: %w[provider provider_name first_seen last_seen hits hits_days_pct providers_num] },
     'dcproxy' => { required: %w[provider provider_name first_seen last_seen hits hits_days_pct providers_num] },
     'mobproxy' => { required: %w[provider provider_name first_seen last_seen hits hits_days_pct providers_num] },
+    'carrier' => { required: %w[name mcc mnc country confidence] },
+    'satellite' => { required: %w[provider provider_name orbit segment country asn confidence] },
+    'ssh' => { required: %w[port banner host_key_fp session_ok first_seen last_seen] },
+    'smtp' => { required: %w[port banner session_ok first_seen last_seen] },
+    'dns_resolver' => { required: %w[port recursion_available rcode answer_correct first_seen last_seen] },
+    'bittorrent' => {
+      required: %w[verified id_matches_ip first_seen last_seen last_reachable days_seen num_ports peak_num_ports
+                   indexer clients],
+    },
+  }.freeze
+
+  # The keys of each row of `web`, a list with a row per port that answered.
+  WEB_KEYS = %w[
+    port tls_ok session_ok status_code server location title cert_subject_cn cert_subject_o cert_issuer_dn
+    cert_browser_trusted tls_version first_seen last_seen
+  ].freeze
+
+  # The objects that are never empty: `required` is on every answer carrying the
+  # object, `optional` only on a plan that includes it.
+  OBJECTS = {
+    'location' => {
+      required: %w[continent continent_name country country_name timezone currency_code currency_name
+                   currency_symbol flag_emoji flag_unicode],
+      optional: %w[region region_code city postal_code latitude longitude accuracy_radius geoname_id dma_code
+                   last_changed],
+    },
+    'asn' => { required: %w[asn name domain type prefix], optional: %w[country rpki_status] },
+    'company' => { required: %w[name domain], optional: %w[type country] },
+    'abuse' => { required: %w[email], optional: %w[name phone address country network validated unvalidated_since] },
   }.freeze
 
   # What a test is allowed to remember about a request it made.
@@ -149,6 +178,32 @@ module StagingAssertions
     assert_equal raw['is_vpn'], fixture[:result].is_vpn, "#{tier}: is_vpn disagrees with the wire"
 
     Staging::MEMBERS.each { |name, spec| assert_member(tier, raw, name, spec) }
+    %w[is_anycast is_web].each do |flag|
+      assert_includes [true, false], raw[flag], "#{tier}: #{flag} must be a real boolean" if raw.key?(flag)
+    end
+    assert_kind_of String, raw['hostname'], "#{tier}: hostname must be a string" if raw.key?('hostname')
+    assert_web(tier, raw) if raw.key?('web')
+    Staging::OBJECTS.each do |name, spec|
+      assert_keys(tier, raw[name], name, spec) if raw.key?(name)
+    end
+  end
+
+  def assert_web(tier, raw)
+    assert_kind_of Array, raw['web'], "#{tier}: web must be a list when present"
+    assert raw.key?('is_web'), "#{tier}: web is served without is_web"
+    assert_equal !raw['web'].empty?, raw['is_web'], "#{tier}: web has rows exactly when is_web is true"
+    raw['web'].each { |row| assert_keys(tier, row, 'web[]', { required: Staging::WEB_KEYS }) }
+  end
+
+  def assert_keys(tier, object, name, spec)
+    assert_kind_of Hash, object, "#{tier}: #{name} must be an object when present"
+    spec[:required].each do |field|
+      assert object.key?(field), "#{tier}: #{name} carries no #{field}"
+    end
+    documented = spec[:required] + (spec[:optional] || [])
+    (object.keys - documented).each do |field|
+      flunk "#{tier}: #{name}.#{field} is not a documented key of this object"
+    end
   end
 
   def assert_member(tier, raw, name, spec)
