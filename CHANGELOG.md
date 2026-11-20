@@ -2,6 +2,18 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.18.0 - 2026-11-20
+
+### Features
+
+- Read the network, service, company and abuse members of an answer ([`6b7f3a5`](https://github.com/vpndetection-io/sdk-ruby/commit/6b7f3a5feec5d6ea3525240f127af32ee452689f))
+- Re-pin the spec to 2026.11.20: network, service, company and abuse members ([`138917b`](https://github.com/vpndetection-io/sdk-ruby/commit/138917bd72b55f7d865eab7e8e3115246476fbb1))
+
+### Fixes
+
+- Cache a spent trial's or a reached cap's answer for a minute at most ([`4e86a62`](https://github.com/vpndetection-io/sdk-ruby/commit/4e86a62a50458e55aaebf4b00c396ec6d555bcfe))
+- Describe the free trial without a count ([`f3b850b`](https://github.com/vpndetection-io/sdk-ruby/commit/f3b850b30c6cde39c76fd28d034ac20be4dfc17d))
+
 ## 5.17.1 - 2026-11-19
 
 ### Fixes
