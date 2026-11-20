@@ -38,7 +38,7 @@ result.asn['name']          # who runs the announcing network
 
 ### With an API key
 
-Every paid plan answers every field: `is_hosting`, `is_cdn` and the four proxy flags as well, and the provider (its ID and its name), confidence and last-seen detail behind each flag. The plans differ only in how many lookups they include, and a free account tries every field, 100 lookups a day. Create a key in the [console](https://app.vpndetection.io), then pass it in:
+Every paid plan answers every field: `is_hosting`, `is_cdn` and the four proxy flags as well, and the provider (its ID and its name), confidence and last-seen detail behind each flag. The plans differ only in how many lookups they include, and a free account tries every field. Create a key in the [console](https://app.vpndetection.io), then pass it in:
 
 ```ruby
 client = VPNDetection::Client.new(api_key: ENV['VPNDETECTION_API_KEY'])
@@ -244,12 +244,12 @@ Each redirect URI must be https on a public host name, or http on a loopback add
 
 ### Absent is not false
 
-Unlimited leaves out `is_hosting`, `is_cdn` and the four proxy flags, and of the detail behind each flag it answers only Tor's and relay's; a free-plan key's answer carries `trial_expired`, true once its daily trial is spent, and a paid key's carries `cap_reached`, true once its organization's overage cap is reached and the answer has Unlimited's. A field is present when your plan includes it and `nil` when it does not. `nil` means "not in your plan"; `false` means "we checked, and no".
+Unlimited leaves out `is_hosting`, `is_cdn` and the four proxy flags, and of the detail behind each flag it answers only Tor's and relay's; a free-plan key's answer carries `trial_expired`, true once its trial is spent, and a paid key's carries `cap_reached`, true once its organization's overage cap is reached and the answer has Unlimited's. A field is present when your plan includes it and `nil` when it does not. `nil` means "not in your plan"; `false` means "we checked, and no".
 
 ```ruby
 result.hosting?                 # false when absent, for when you only want the flag
 result.included?(:is_hosting)   # false on Unlimited: not in your plan
-result.trial_expired == true    # a free-plan key's daily trial is spent
+result.trial_expired == true    # a free-plan key's trial is spent
 result.cap_reached == true      # a paid key past its overage cap
 ```
 
