@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.18.1 - 2026-11-21
+
+### Fixes
+
+- Build a client where a bare Rails constant has no logger ([`2f32663`](https://github.com/vpndetection-io/sdk-ruby/commit/2f32663bda4a2c198f679302c04037eba7a11d08))
+
 ## 5.18.0 - 2026-11-20
 
 ### Features
