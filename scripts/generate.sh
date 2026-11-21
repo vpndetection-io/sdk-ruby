@@ -70,12 +70,19 @@ docker run --rm \
 # The generator writes `defined?(Rails) ? Rails.logger : ...` into
 # configuration.rb, and that file lives inside `module VPNDetection` - so the
 # bare constant resolves to VPNDetection::Rails first, which EXISTS as soon as
-# the vpndetection-rails gem is loaded. Re-applied here rather than by hand,
-# because a hand-fix to a generated file survives exactly until the next
-# regeneration; it was lost that way once already.
+# the vpndetection-rails gem is loaded. And a ::Rails without a logger is no
+# Rails app: railties' minitest plugin defines a bare one in any bundle holding
+# railties, so building a client raised NoMethodError. Re-applied here rather
+# than by hand, because a hand-fix to a generated file survives exactly until
+# the next regeneration; it was lost that way once already.
 function patch_rails_constant() {
-    sed -i 's|defined?(Rails) ? Rails.logger|defined?(::Rails) ? ::Rails.logger|' \
-        .gen/lib/vpndetection/configuration.rb
+    local configuration=".gen/lib/vpndetection/configuration.rb"
+    sed -i 's|defined?(Rails) ? Rails.logger|defined?(::Rails) \&\& ::Rails.respond_to?(:logger) ? ::Rails.logger|' \
+        "$configuration"
+    if ! grep -q 'defined?(::Rails) && ::Rails.respond_to?(:logger) ? ::Rails.logger' "$configuration" ; then
+        echo "could not patch the Rails logger in ${configuration}: its line changed shape" >&2
+        exit 1
+    fi
 }
 
 # The generated OAuth class is public by accident and nothing calls it:

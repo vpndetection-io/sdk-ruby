@@ -18,6 +18,17 @@ class ClientTest < Minitest::Test
     Typhoeus::Expectation.clear
   end
 
+  # railties' minitest plugin defines a bare ::Rails, with no logger, in any
+  # bundle that holds railties, before or without Rails itself loading.
+  def test_a_client_builds_beside_a_rails_constant_without_a_logger
+    defined_here = !defined?(::Rails)
+    Object.const_set(:Rails, Module.new) if defined_here
+
+    assert_instance_of VPNDetection::Client, VPNDetection::Client.new(api_key: 'k_rails', cache: false)
+  ensure
+    Object.send(:remove_const, :Rails) if defined_here
+  end
+
   def test_the_bogon_predicate_is_the_same_answer_on_the_module_and_on_a_client
     client = VPNDetection::Client.new
     %w[10.0.0.1 8.8.8.8 ::1 2606:4700:4700::1111 notanip].each do |ip|
