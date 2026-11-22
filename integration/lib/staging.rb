@@ -24,6 +24,10 @@ module Staging
     'relay' => { required: %w[provider provider_name confidence last_seen] },
     'tor' => { required: %w[provider provider_name confidence last_seen] },
     'cdn' => { required: %w[provider provider_name confidence last_seen] },
+    'bot' => {
+      required: %w[provider provider_name agents categories verified identity verified_by confidence first_seen
+                   last_seen],
+    },
     'resproxy' => { required: %w[provider provider_name first_seen last_seen hits hits_days_pct providers_num] },
     'dcproxy' => { required: %w[provider provider_name first_seen last_seen hits hits_days_pct providers_num] },
     'mobproxy' => { required: %w[provider provider_name first_seen last_seen hits hits_days_pct providers_num] },
@@ -53,7 +57,7 @@ module Staging
       optional: %w[region region_code city postal_code latitude longitude accuracy_radius geoname_id dma_code
                    last_changed],
     },
-    'asn' => { required: %w[asn name domain type prefix], optional: %w[country rpki_status] },
+    'asn' => { required: %w[asn name domain type prefix country rpki_status] },
     'company' => { required: %w[name domain], optional: %w[type country] },
     'abuse' => { required: %w[email], optional: %w[name phone address country network validated unvalidated_since] },
   }.freeze

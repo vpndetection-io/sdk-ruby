@@ -18,15 +18,15 @@ module VPNDetection
   # wire hashes with their original string keys, so `result.vpn['provider']`.
   class Result
     FLAGS = %w[
-      is_vpn is_hosting is_relay is_tor is_cdn is_resproxy is_dcproxy is_mobproxy
+      is_vpn is_hosting is_relay is_tor is_cdn is_bot is_resproxy is_dcproxy is_mobproxy
       is_pubproxy is_anycast is_carrier is_satellite is_ssh is_smtp is_web is_dns_resolver
       is_bittorrent
     ].freeze
 
     # The detail object behind each flag that has one; `is_anycast` has none.
     DETAILS = %w[
-      vpn hosting relay tor cdn resproxy dcproxy mobproxy pubproxy carrier satellite ssh smtp dns_resolver
-      bittorrent
+      vpn hosting relay tor cdn bot resproxy dcproxy mobproxy pubproxy carrier satellite ssh smtp
+      dns_resolver bittorrent
     ].freeze
 
     # The details that are a list of rows rather than one object.
@@ -136,6 +136,19 @@ module VPNDetection
     # `is_cdn` with an absent member read as false.
     def cdn?
       @raw['is_cdn'] == true
+    end
+
+    # Whether an automated client uses the address, such as a search engine's
+    # or an AI company's crawler, an uptime monitor, an internet scanner or a
+    # webhook sender, or nil when your plan does not include it. Every answer,
+    # with or without a key.
+    def is_bot
+      @raw['is_bot']
+    end
+
+    # `is_bot` with an absent member read as false.
+    def bot?
+      @raw['is_bot'] == true
     end
 
     # Whether the address was seen in a residential proxy pool, or nil when your
@@ -297,6 +310,15 @@ module VPNDetection
     # Detail for `is_cdn`. Every paid plan.
     def cdn
       @raw['cdn']
+    end
+
+    # Detail for `is_bot`: provider, provider_name, agents, categories,
+    # verified, identity, verified_by, confidence, first_seen and last_seen.
+    # agents and categories are lists, in the order served, and `[]` where none
+    # is known; verified_by is an empty string when verified is false. Every
+    # paid plan.
+    def bot
+      @raw['bot']
     end
 
     # Detail for `is_resproxy`. Every paid plan.

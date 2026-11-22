@@ -16,8 +16,8 @@ class ConformanceTest < Minitest::Test
 
   # The keys of a lookup case's `expect` that each give one member's whole value.
   EXPECT_VALUES = %w[
-    vpn hosting dcproxy pubproxy location asn carrier satellite ssh smtp web dns_resolver bittorrent company
-    abuse hostname
+    vpn hosting dcproxy pubproxy bot location asn carrier satellite ssh smtp web dns_resolver bittorrent
+    company abuse hostname
   ].freeze
 
   # The members `bogonResponse` gives a whole value for.
@@ -141,6 +141,31 @@ class ConformanceTest < Minitest::Test
 
       Typhoeus::Expectation.clear
     end
+  end
+
+  # A verified bot's detail, read member by member, its lists in the order
+  # served, and every member BotDetail names; Unlimited's answer has no detail.
+  def test_a_bot_answer_carries_its_detail_on_a_paid_plan_alone
+    paid = CORPUS['lookup'].find { |c| c['name'] == 'paid-verified-bot' }
+    stub_lookups(paid['body']['ip'] => { body: paid['body'] })
+    result = VPNDetection::Client.new.lookup(paid['body']['ip'])
+
+    assert_equal true, result.is_bot
+    assert result.bot?
+    paid['expect']['bot'].each do |member, value|
+      assert_equal value, result.bot[member], "bot.#{member}"
+    end
+    assert_equal VPNDetection::BotDetail.attribute_map.values.map(&:to_s).sort, result.bot.keys.sort
+    assert_equal %w[Google-CloudVertexBot GoogleOther Googlebot], result.bot['agents']
+
+    Typhoeus::Expectation.clear
+    unlimited = CORPUS['lookup'].find { |c| c['name'] == 'unlimited-bot' }
+    stub_lookups(unlimited['body']['ip'] => { body: unlimited['body'] })
+    result = VPNDetection::Client.new.lookup(unlimited['body']['ip'])
+
+    assert result.bot?
+    assert_nil result.bot
+    refute result.included?(:bot)
   end
 
   def predicate_for(field)

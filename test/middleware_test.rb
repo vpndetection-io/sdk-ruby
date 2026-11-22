@@ -149,6 +149,26 @@ class MiddlewareTest < Minitest::Test
     assert lookup.blocked?
   end
 
+  # A served answer from a public peer, never a bogon, which would pass
+  # vacuously: the bot is blocked and the browser let through.
+  def test_a_condition_on_is_bot_blocks_a_bot_and_passes_anyone_else
+    bot_ip = '66.249.66.1'
+    calls = stub_lookups(
+      bot_ip => { body: { 'ip' => bot_ip, 'is_vpn' => false, 'is_bot' => true,
+                          'bot' => { 'provider' => 'google', 'verified' => true } } },
+      PUBLIC_IP => { body: { 'ip' => PUBLIC_IP, 'is_vpn' => false, 'is_bot' => false, 'bot' => {} } }
+    )
+    client = VPNDetection::Client.new(cache: false, retries: 0)
+    by_bot = core(client: client, block_condition: { 'is_bot' => true })
+    by_verified = core(client: client, block_condition: { bot: { verified: true } })
+
+    assert by_bot.evaluate(Req.new({}, bot_ip)).blocked?
+    assert by_verified.evaluate(Req.new({}, bot_ip)).blocked?
+    refute by_bot.evaluate(Req.new({}, PUBLIC_IP)).blocked?
+    refute by_verified.evaluate(Req.new({}, PUBLIC_IP)).blocked?
+    assert_equal ["#{BASE_URL}/#{bot_ip}"] * 2 + ["#{BASE_URL}/#{PUBLIC_IP}"] * 2, calls
+  end
+
   def test_selectors_read_what_they_say_they_read
     request = Req.new({ 'X-Forwarded-For' => '203.0.113.9, 70.41.3.18, 150.172.238.178' },
                       '10.0.0.1')
