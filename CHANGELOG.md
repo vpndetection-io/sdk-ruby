@@ -2,6 +2,16 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.19.0 - 2026-11-22
+
+### Features
+
+- Read is_bot and bot on every lookup answer ([`3883d1d`](https://github.com/vpndetection-io/sdk-ruby/commit/3883d1d23e18d1624f18de17d1f5005355ec96d6))
+
+### Fixes
+
+- Require the AS's country and RPKI status, as the API always sends them ([`aae4dc1`](https://github.com/vpndetection-io/sdk-ruby/commit/aae4dc1b8f03af630ce7dbbe1669c27effb315c6))
+
 ## 5.18.1 - 2026-11-21
 
 ### Fixes
