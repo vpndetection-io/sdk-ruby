@@ -223,6 +223,12 @@ class ClientTest < Minitest::Test
     assert_equal 1, sent, 'one unreadable entry does not retry the chunk'
   end
 
+  # An AS as every answer carries it, its country and RPKI status included.
+  WHOLE_ASN = {
+    'asn' => 15_169, 'name' => 'Google LLC', 'domain' => 'google.com', 'type' => 'hosting',
+    'prefix' => '8.8.8.0/24', 'country' => 'US', 'rpki_status' => 'valid'
+  }.freeze
+
   WRONG_TYPED = {
     'a flag of "yes"' => { 'is_hosting' => 'yes' },
     'a flag of 1' => { 'is_tor' => 1 },
@@ -236,7 +242,20 @@ class ClientTest < Minitest::Test
     'a last_seen of "monday"' => { 'vpn' => { 'provider' => 'p', 'last_seen' => 'monday' } },
     'a last_seen on 30 February' => { 'vpn' => { 'provider' => 'p', 'last_seen' => '2026-02-30' } },
     'a last_seen with a time' => { 'tor' => { 'last_seen' => '2026-10-20T10:00:00Z' } },
+    # Required from 5.19.0, as the API always sends them.
+    'an AS without its country' => { 'asn' => WHOLE_ASN.except('country') },
+    'an AS without its RPKI status' => { 'asn' => WHOLE_ASN.except('rpki_status') },
+    'an AS with a null country' => { 'asn' => WHOLE_ASN.merge('country' => nil) },
+    'an AS with a null RPKI status' => { 'asn' => WHOLE_ASN.merge('rpki_status' => nil) },
   }.freeze
+
+  # The answer the AS cases above are cut from is read, so their refusal is
+  # the missing member's alone.
+  def test_an_as_carrying_every_required_member_is_read
+    stub_lookups('1.1.1.1' => { body: { 'ip' => '1.1.1.1', 'is_vpn' => false, 'asn' => WHOLE_ASN } })
+
+    assert_equal WHOLE_ASN, VPNDetection::Client.new(cache: false, retries: 0).lookup('1.1.1.1').asn
+  end
 
   # Through 5.9.0 a member of the wrong type, or a null the spec does not
   # allow, came back from a lookup and my_ip as the answer, after one request:
