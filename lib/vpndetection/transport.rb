@@ -145,18 +145,24 @@ module VPNDetection
       Typhoeus::Request.new(url, options)
     end
 
-    def lookup_request(ip, timeout: nil)
+    # `user_agent` goes as the query parameter only when there is one: nil or
+    # empty is none. Built here rather than by the generated LookupWireApi, which
+    # refuses an agent past the spec's 1024 characters that the API itself cuts
+    # there and answers.
+    def lookup_request(ip, timeout: nil, user_agent: nil)
       build_request(
         :GET, LOOKUP_PATH.sub('{ip}', CGI.escape(ip.to_s)),
+        query_params: user_agent ? { user_agent: user_agent } : {},
         header_params: { 'Accept' => 'application/json' },
         auth_names: %w[bearerAuth apiKeyHeader apiKeyQuery],
         timeout: timeout,
       )
     end
 
-    def myip_request(timeout: nil)
+    def myip_request(timeout: nil, user_agent: nil)
       build_request(
         :GET, MYIP_PATH,
+        query_params: user_agent ? { user_agent: user_agent } : {},
         header_params: { 'Accept' => 'application/json' },
         auth_names: %w[bearerAuth apiKeyHeader apiKeyQuery],
         timeout: timeout,
@@ -189,15 +195,30 @@ module VPNDetection
       request
     end
 
-    # The one request with a body: the batch.
-    def batch_request(ips, timeout: nil)
+    # The one request with a body: the batch. `user_agents`, keyed by each
+    # address as it is in `ips`, is sent only when it holds an entry, never as
+    # `{}`: the spec types it an object, never null or empty.
+    def batch_request(ips, timeout: nil, user_agents: nil)
+      body = { ips: ips }
+      body[:user_agents] = user_agents unless user_agents.nil? || user_agents.empty?
       build_request(
         :POST, BATCH_PATH,
         header_params: { 'Accept' => 'application/json', 'Content-Type' => 'application/json' },
-        body: { ips: ips },
+        body: body,
         auth_names: %w[bearerAuth apiKeyHeader apiKeyQuery],
         timeout: timeout,
       )
+    end
+
+    # The agent a call sends: nil for none, which an empty one is, as the API
+    # reads `user_agent=`. Anything but a String or nil is refused, since its
+    # text would be sent as the agent. One past the spec's 1024 characters is
+    # sent as it is: the API cuts it there and answers.
+    def self.checked_user_agent(user_agent)
+      return nil if user_agent.nil?
+      raise ArgumentError, "user_agent must be a String, not #{user_agent.inspect}" unless user_agent.is_a?(String)
+
+      user_agent.empty? ? nil : user_agent
     end
 
     def self.entitlement_result(response)

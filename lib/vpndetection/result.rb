@@ -423,6 +423,19 @@ module VPNDetection
       @raw['abuse']
     end
 
+    # What the API made of the user agent the lookup sent, as a wire hash
+    # (`result.user_agent['verdict']`): agent, the agent it names (`Googlebot`,
+    # `Chrome`, `Unknown` where it names none); kind, what kind of client it says
+    # it is (`browser`, `bot`, `ai-bot` and the rest); and verdict, `verified`
+    # where the agent's operator vouches for this address, `spoofed` where it does
+    # not, `unverifiable` for a bot nothing published can confirm, or `not_bot`
+    # for a browser, an app or a script. Present only when the lookup sent an
+    # agent and the answer has every field (a paid plan, or the trial); nil on a
+    # bogon, which is answered locally.
+    def user_agent
+      @raw['user_agent']
+    end
+
     # On answers to a key on the free plan only: false while its organization's
     # trial of every field lasts, true once the answer has Unlimited's; nil on any
     # other answer.

@@ -85,28 +85,37 @@ module VPNDetection
     #
     # @param retries [Integer, nil] extra attempts, for THIS call only.
     # @param timeout [Numeric, nil] seconds each attempt may take, for THIS call only.
-    def lookup(ip, retries: nil, timeout: nil)
+    # @param user_agent [String, nil] the `User-Agent` of the request you are
+    #   deciding on. With every field (a paid plan, or the trial) the answer then
+    #   carries {Result#user_agent}: the agent it names, and whether this address
+    #   bears that out. An empty one is none. An answer with one is cached apart
+    #   from the address's plain answer and from another agent's. A bogon is still
+    #   answered locally, with no `user_agent`.
+    # @raise [ArgumentError] for a `user_agent` that is not a String.
+    def lookup(ip, retries: nil, timeout: nil, user_agent: nil)
       # Here as well as in the transport: a bogon or a cached answer returns before any request.
       Transport.checked_timeout(timeout) unless timeout.nil?
       Retries.checked_count(retries) unless retries.nil?
+      agent = Transport.checked_user_agent(user_agent)
       # Judged, cached and sent as the IPv4 address it carries, if it is mapped.
       ip = Bogon.unmapped(ip)
       return Bogon.result(ip) if Bogon.bogon?(ip)
 
+      key = key_of(ip, agent)
       loop do
-        hit = @cache&.get(ip)
+        hit = @cache&.get(key)
         return hit unless hit.nil?
 
-        flight, leader = board(ip)
-        return fetch(ip, retries, timeout) if flight.nil?
+        flight, leader = board(key)
+        return fetch(ip, agent, retries, timeout) if flight.nil?
 
         if leader
           # Read once more now the address is boarded: a leader that landed
           # between the miss above and boarding has already cached its answer.
-          hit = @cache.get(ip)
-          return unboard(ip, flight, :served, hit) unless hit.nil?
+          hit = @cache.get(key)
+          return unboard(key, flight, :served, hit) unless hit.nil?
 
-          return lead(ip, flight) { fetch(ip, retries, timeout) }
+          return lead(key, flight) { fetch(ip, agent, retries, timeout) }
         end
         state, value = flight.wait
         return value if state == :served
@@ -125,10 +134,13 @@ module VPNDetection
     # Deliberately NOT cached. The cache is keyed by address, and which address
     # this is IS the question: a machine that moves between networks would
     # otherwise be told where it used to be.
-    def my_ip(retries: nil, timeout: nil)
+    #
+    # @param user_agent [String, nil] as {#lookup} takes it.
+    def my_ip(retries: nil, timeout: nil, user_agent: nil)
       Retries.checked_count(retries) unless retries.nil?
+      agent = Transport.checked_user_agent(user_agent)
       Retries.with_retries(retries || @retries) do
-        Transport.lookup_result(@transport.myip_request(timeout: timeout).run)
+        Transport.lookup_result(@transport.myip_request(timeout: timeout, user_agent: agent).run)
       end
     end
 
@@ -179,32 +191,47 @@ module VPNDetection
     #   request, and before a bogon or a cached answer is returned.
     # @param retries [Integer, nil] extra attempts for a failed chunk, for THIS batch only.
     # @param timeout [Numeric, nil] seconds each chunk's attempt may take, for THIS batch only.
+    # @param user_agents [Hash{String => String}, nil] the `User-Agent` to send
+    #   with each address, keyed by the address as given in `ips`: as
+    #   {#lookup}'s `user_agent:`, per address. An address with none, or an empty
+    #   one, is looked up plainly. Where two spellings of one IPv4-mapped address
+    #   carry different agents, the first given is sent.
+    # @raise [ArgumentError] for `user_agents` that is not a Hash, or an agent in
+    #   it that is not a String.
     # @return [Hash{String => Result, Error}] in the order the addresses were given
-    def lookup_batch(ips, concurrency: nil, retries: nil, timeout: nil)
+    def lookup_batch(ips, concurrency: nil, retries: nil, timeout: nil, user_agents: nil)
       limit = concurrency || @concurrency
       unless concurrency?(limit)
         raise Error.new(:bad_request, "concurrency must be an Integer from 1, not #{limit.inspect}")
       end
       Transport.checked_timeout(timeout) unless timeout.nil?
       Retries.checked_count(retries) unless retries.nil?
+      unless user_agents.nil? || user_agents.is_a?(Hash)
+        raise ArgumentError, "user_agents must be a Hash of address to agent, not #{user_agents.inspect}"
+      end
 
       # An IPv4-mapped address is sent as the address it carries, once however
       # many of its spellings were asked, and answered under each one asked.
       asked = ips.to_a.uniq
+      agents = {}
+      asked.each do |ip|
+        agent = Transport.checked_user_agent(user_agents&.[](ip))
+        agents[Bogon.unmapped(ip)] ||= agent unless agent.nil?
+      end
       addresses = asked.map { |ip| Bogon.unmapped(ip) }.uniq
       answers = {}
       pending = []
 
       addresses.each do |ip|
-        hit = Bogon.bogon?(ip) ? Bogon.result(ip) : @cache&.get(ip)
+        hit = Bogon.bogon?(ip) ? Bogon.result(ip) : @cache&.get(key_of(ip, agents[ip]))
         hit.nil? ? pending << ip : answers[ip] = hit
       end
       # Boarded before any chunk is built, so a lookup arriving meanwhile waits
-      # for this batch; an address already in flight is not sent again.
+      # for this batch; an address and agent already in flight is not sent again.
       boarded = {}
       joined = {}
       pending.each do |ip|
-        flight, leader = board(ip)
+        flight, leader = board(key_of(ip, agents[ip]))
         if leader == false
           joined[ip] = flight
         else
@@ -214,12 +241,12 @@ module VPNDetection
       begin
         unless boarded.empty?
           chunks = boarded.keys.each_slice(BATCH_MAX).to_a
-          run_batch(chunks, answers, limit, retries || @retries, timeout, boarded)
+          run_batch(chunks, agents, answers, limit, retries || @retries, timeout, boarded)
         end
       ensure
-        boarded.each { |ip, flight| unboard(ip, flight, :abandoned) unless flight.nil? }
+        boarded.each { |ip, flight| unboard(key_of(ip, agents[ip]), flight, :abandoned) unless flight.nil? }
       end
-      joined.each { |ip, flight| answers[ip] = joined_answer(ip, flight, retries, timeout) }
+      joined.each { |ip, flight| answers[ip] = joined_answer(ip, agents[ip], flight, retries, timeout) }
 
       # Reinstated in input order: a hydra settles in completion order, and a
       # caller iterating the hash should see what they passed in.
@@ -232,6 +259,13 @@ module VPNDetection
     # whole, and a hydra allowed fewer than one runs nothing.
     def concurrency?(value)
       value.is_a?(Integer) && value >= 1
+    end
+
+    # What an answer is cached and shared under: the address alone, or the
+    # address and the agent sent with it, since that answer carries a verdict
+    # the plain one does not.
+    def key_of(ip, agent)
+      agent.nil? ? ip : [ip, agent]
     end
 
     # Concurrent misses for one address share ONE request: 5.4.2 sent one per
@@ -265,21 +299,21 @@ module VPNDetection
       end
     end
 
-    # [flight, true] when this caller leads the request for `ip`, [flight,
-    # false] when one is already in flight, and nil without a cache: every
-    # lookup is then served, so nothing is shared.
-    def board(ip)
+    # [flight, true] when this caller leads the request for `key`, an address
+    # or an address and agent, [flight, false] when one is already in flight,
+    # and nil without a cache: every lookup is then served, so nothing is shared.
+    def board(key)
       return nil if @cache.nil?
 
       @flights_lock.synchronize do
-        existing = @flights[ip]
-        existing ? [existing, false] : [@flights[ip] = Flight.new, true]
+        existing = @flights[key]
+        existing ? [existing, false] : [@flights[key] = Flight.new, true]
       end
     end
 
-    # Takes `ip` off the board and lands its flight. Returns `value`.
-    def unboard(ip, flight, state, value = nil)
-      @flights_lock.synchronize { @flights.delete(ip) if @flights[ip].equal?(flight) }
+    # Takes `key` off the board and lands its flight. Returns `value`.
+    def unboard(key, flight, state, value = nil)
+      @flights_lock.synchronize { @flights.delete(key) if @flights[key].equal?(flight) }
       flight.land(state, value)
       value
     end
@@ -289,39 +323,42 @@ module VPNDetection
     # reaches every waiter and is cached for none; and a leader that never
     # finishes - a killed thread, a Timeout.timeout - abandons the flight, so
     # its waiters ask again rather than failing with it.
-    def lead(ip, flight)
-      unboard(ip, flight, :served, yield)
+    def lead(key, flight)
+      unboard(key, flight, :served, yield)
     rescue Error => e
-      unboard(ip, flight, :failed, e)
+      unboard(key, flight, :failed, e)
       raise
     ensure
-      unboard(ip, flight, :abandoned)
+      unboard(key, flight, :abandoned)
     end
 
-    def fetch(ip, retries, timeout)
+    def fetch(ip, agent, retries, timeout)
       result = Retries.with_retries(retries || @retries) do
-        Transport.lookup_result(@transport.lookup_request(ip, timeout: timeout).run)
+        Transport.lookup_result(@transport.lookup_request(ip, timeout: timeout, user_agent: agent).run)
       end
-      @cache&.set(ip, result)
+      @cache&.set(key_of(ip, agent), result)
       result
     end
 
     # One hydra per call, sized for THIS call. Reusing an instance-level hydra
     # would silently cap a per-call concurrency at the client's setting, and
     # would not be safe to drive from two threads either. Each request is one
-    # chunk of up to 1000 addresses.
-    def run_batch(chunks, answers, concurrency, retries, timeout, boarded)
+    # chunk of up to 1000 addresses, carrying the agents of that chunk's
+    # addresses alone.
+    def run_batch(chunks, agents, answers, concurrency, retries, timeout, boarded)
       hydra = Typhoeus::Hydra.new(max_concurrency: concurrency)
       attempts = Hash.new(0)
 
       enqueue = lambda do |chunk|
-        request = @transport.batch_request(chunk, timeout: timeout)
+        sent = chunk.filter_map { |ip| [ip, agents[ip]] if agents.key?(ip) }.to_h
+        request = @transport.batch_request(chunk, timeout: timeout, user_agents: sent)
         request.on_complete do |response|
-          outcome = settle(chunk, response, attempts, retries, enqueue)
+          outcome = settle(chunk, agents, response, attempts, retries, enqueue)
           outcome&.each do |ip, answer|
             answers[ip] = answer
             flight = boarded[ip]
-            unboard(ip, flight, answer.is_a?(Result) ? :served : :failed, answer) unless flight.nil?
+            state = answer.is_a?(Result) ? :served : :failed
+            unboard(key_of(ip, agents[ip]), flight, state, answer) unless flight.nil?
           end
         end
         hydra.queue(request)
@@ -335,11 +372,11 @@ module VPNDetection
     # chunk-level failure - the call refused, the transport failing, the retries
     # exhausted - becomes every address's error, exactly as it would have been
     # had each been looked up alone.
-    def settle(chunk, response, attempts, retries, enqueue)
+    def settle(chunk, agents, response, attempts, retries, enqueue)
       body = Transport.batch_body(response)
       chunk.to_h do |ip|
         answer = batch_answer(ip, body)
-        @cache&.set(ip, answer) if answer.is_a?(Result)
+        @cache&.set(key_of(ip, agents[ip]), answer) if answer.is_a?(Result)
         [ip, answer]
       end
     rescue Error => e
@@ -355,11 +392,11 @@ module VPNDetection
 
     # What a batch takes for an address another call was fetching: that call's
     # answer or error, or, when its leader never finished, its own lookup.
-    def joined_answer(ip, flight, retries, timeout)
+    def joined_answer(ip, agent, flight, retries, timeout)
       state, value = flight.wait
       return value unless state == :abandoned
 
-      lookup(ip, retries: retries, timeout: timeout)
+      lookup(ip, retries: retries, timeout: timeout, user_agent: agent)
     rescue Error => e
       e
     end

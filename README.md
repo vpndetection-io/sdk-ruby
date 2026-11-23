@@ -72,6 +72,19 @@ Usage counts against the anniversary of your subscription on a paid plan, not th
 
 Show `plan.name` and compare against `plan.key`: a plan's name can change, and its key never does. A value the API adds later to a plan's `tier`, a database's `standing` or `license_type`, a format or a download's `outcome` comes back as the string it served (from 5.16.0), so check for the values you know rather than assuming the list is complete.
 
+### Is that crawler who it says it is?
+
+Pass the `User-Agent` of the request you are deciding on, and with every field (a paid plan, or a free account's trial) the answer says whose agent it names and whether this address bears that out:
+
+```ruby
+result = client.lookup('66.249.66.1', user_agent: request.user_agent)
+result.user_agent  # => {"agent"=>"Googlebot", "kind"=>"bot", "verdict"=>"verified"}
+
+results = client.lookup_batch(ips, user_agents: { '66.249.66.1' => request.user_agent })
+```
+
+`verdict` is `verified` where the agent's operator vouches for the address, `spoofed` where it does not, `unverifiable` for a bot nothing published can confirm, and `not_bot` for a browser, an app or a script. `my_ip` takes `user_agent:` too. A batch's `user_agents` is keyed by each address as you list it, and an address with no agent, or an empty one, is looked up plainly. An answer with an agent is cached apart from the address's plain answer and from another agent's. Unlimited's answers, a private address's and a lookup that sent none carry no `user_agent` (`nil`).
+
 ### Batch lookup
 
 Look up as many addresses as you like at once. Bogons and cached answers are handled locally, and everything else goes to the batch endpoint in chunks of up to 1000 addresses, in parallel. The batch endpoint needs a paid plan:
