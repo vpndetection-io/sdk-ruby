@@ -2,6 +2,13 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.20.0 - 2026-11-23
+
+### Features
+
+- Send the user agent of the request you are deciding on with a lookup ([`c7db5a9`](https://github.com/vpndetection-io/sdk-ruby/commit/c7db5a9fe6864a6b9b9a9c4faf74fc6570582526))
+- Middleware: allow_bots lets a crawler its operator vouches for through ([`f50944b`](https://github.com/vpndetection-io/sdk-ruby/commit/f50944b3f5c37f98dda836f47ade04dddfec3c3f))
+
 ## 5.19.0 - 2026-11-22
 
 ### Features
