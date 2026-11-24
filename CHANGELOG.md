@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.20.1 - 2026-11-24
+
+### Fixes
+
+- Refuse a malformed first or last day on six lookup details ([`3130787`](https://github.com/vpndetection-io/sdk-ruby/commit/31307877fbf1937beeffe6580acba190c9344949))
+
 ## 5.20.0 - 2026-11-23
 
 ### Features
