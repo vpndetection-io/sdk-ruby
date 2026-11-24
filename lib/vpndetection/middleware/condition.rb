@@ -16,10 +16,11 @@ module VPNDetection
     #
     # A value may be a scalar (equality, strings without regard to case), an
     # Array meaning any-of, a Hash of `gte`/`gt`/`lte`/`lt` bounding a number,
-    # or a nested condition. A member set to `false` or `nil` is ignored
-    # entirely - a condition states the positive signals you act on, so there is
-    # no way to write "block when this is false", which would otherwise read as
-    # blocking everybody.
+    # or a nested condition. A term on a member the answer holds as a list
+    # matches when any element matches it. A member set to `false` or `nil` is
+    # ignored entirely - a condition states the positive signals you act on, so
+    # there is no way to write "block when this is false", which would otherwise
+    # read as blocking everybody.
     module Condition
       BOUND_KEYS = %w[gte gt lte lt].freeze
 
@@ -99,7 +100,13 @@ module VPNDetection
       # An ABSENT member arrives here as nil, which is exactly what "not in your
       # plan" looks like. Every branch below must therefore reject it, which is
       # what makes an unserved member fail a match rather than pass it.
+      #
+      # A member the answer holds as a list (`pubproxy.protocols`, a `web` row)
+      # matches when any element matches the term, so an object term must match
+      # one element whole.
       def matches_value?(want, got)
+        return got.any? { |element| matches_value?(want, element) } if got.is_a?(Array)
+
         case want
         when Array then want.any? { |entry| matches_value?(entry, got) }
         when Hash
