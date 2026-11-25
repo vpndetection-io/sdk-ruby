@@ -38,7 +38,7 @@ result.asn['name']          # who runs the announcing network
 
 ### With an API key
 
-Every paid plan answers every field: `is_hosting`, `is_cdn` and the four proxy flags as well, the carrier and satellite flags, the five service flags (SSH, SMTP, web, DNS resolver and BitTorrent), city-level `location`, the `company` and the `abuse` contact, `bot` (whose bot uses the address, what it does and whether its operator vouches for the address), and the provider (its ID and its name), confidence and last-seen detail behind each flag. The plans differ only in how many lookups they include, and a free account tries every field. Create a key in the [console](https://app.vpndetection.io), then pass it in:
+A paid plan answers every field: `is_hosting`, `is_cdn` and the four proxy flags as well, the carrier and satellite flags, the five service flags (SSH, SMTP, web, DNS resolver and BitTorrent), city-level `location`, the `company` and the `abuse` contact, `bot` (whose bot uses the address, what it does and whether its operator vouches for the address), and the provider (its ID and its name), confidence and last-seen detail behind each flag. Its quotas differ only in how many lookups they include, and a free account tries every field. Create a key in the [console](https://app.vpndetection.io), then pass it in:
 
 ```ruby
 client = VPNDetection::Client.new(api_key: ENV['VPNDETECTION_API_KEY'])
@@ -62,8 +62,8 @@ Same answer `lookup` would give for that address, and the same cost against your
 
 ```ruby
 acct = client.my_entitlement
-acct.plan.name         # => "Max", what to show
-acct.plan.key          # => "max", what to compare against
+acct.plan.name         # => "Data", what to show
+acct.plan.key          # => "data_4", what to compare against
 acct.usage.requests    # => 580
 acct.usage.window_end  # => when the allowance resets
 ```
