@@ -2,6 +2,14 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.21.1 - 2026-11-25
+
+### Fixes
+
+- README: one paid plan, Data; the entitlement example names it ([`7e2d315`](https://github.com/vpndetection-io/sdk-ruby/commit/7e2d31569e3a7461f3992e740d29c40f89e8adc6))
+- Spec 2026.11.25: doc comments name a paid plan, the entitlement example the Data plan ([`10b4789`](https://github.com/vpndetection-io/sdk-ruby/commit/10b47890c2ec9d006c032d6328f939d8c60a53b1))
+- Doc comments name a paid plan, now that Data is the only one ([`6a484fe`](https://github.com/vpndetection-io/sdk-ruby/commit/6a484fe05c8d184265a83122ac86b28c35e95e4d))
+
 ## 5.21.0 - 2026-11-24
 
 ### Fixes
