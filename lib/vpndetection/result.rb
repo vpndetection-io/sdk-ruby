@@ -95,7 +95,7 @@ module VPNDetection
     end
 
     # Whether the address belongs to a hosting or cloud provider, or nil when
-    # your plan does not include it. On every paid plan.
+    # your plan does not include it. On a paid plan.
     def is_hosting
       @raw['is_hosting']
     end
@@ -128,7 +128,7 @@ module VPNDetection
     end
 
     # Whether the address belongs to a CDN, or nil when your plan does not
-    # include it. On every paid plan.
+    # include it. On a paid plan.
     def is_cdn
       @raw['is_cdn']
     end
@@ -152,7 +152,7 @@ module VPNDetection
     end
 
     # Whether the address was seen in a residential proxy pool, or nil when your
-    # plan does not include it. On every paid plan.
+    # plan does not include it. On a paid plan.
     def is_resproxy
       @raw['is_resproxy']
     end
@@ -164,7 +164,7 @@ module VPNDetection
 
     # Whether the address is one a datacenter proxy service sells or runs on, a
     # proxy company's own ranges included, or nil when your plan does not
-    # include it. On every paid plan.
+    # include it. On a paid plan.
     def is_dcproxy
       @raw['is_dcproxy']
     end
@@ -175,7 +175,7 @@ module VPNDetection
     end
 
     # Whether the address was seen in a mobile proxy pool, or nil when your plan
-    # does not include it. On every paid plan.
+    # does not include it. On a paid plan.
     def is_mobproxy
       @raw['is_mobproxy']
     end
@@ -187,7 +187,7 @@ module VPNDetection
 
     # Whether a public proxy, one anyone can connect through, listens on the
     # address or sends its traffic out from it, or nil when your plan does not
-    # include it. On every paid plan.
+    # include it. On a paid plan.
     def is_pubproxy
       @raw['is_pubproxy']
     end
@@ -210,7 +210,7 @@ module VPNDetection
     end
 
     # Whether the address is a mobile carrier's, where many phones can share one
-    # address, or nil when your plan does not include it. On every paid plan.
+    # address, or nil when your plan does not include it. On a paid plan.
     def is_carrier
       @raw['is_carrier']
     end
@@ -221,7 +221,7 @@ module VPNDetection
     end
 
     # Whether the address is a satellite operator's, or nil when your plan does
-    # not include it. On every paid plan.
+    # not include it. On a paid plan.
     def is_satellite
       @raw['is_satellite']
     end
@@ -232,7 +232,7 @@ module VPNDetection
     end
 
     # Whether an SSH server answered on the address, or nil when your plan does
-    # not include it. On every paid plan.
+    # not include it. On a paid plan.
     def is_ssh
       @raw['is_ssh']
     end
@@ -243,7 +243,7 @@ module VPNDetection
     end
 
     # Whether a mail server answered on the address, or nil when your plan does
-    # not include it. On every paid plan.
+    # not include it. On a paid plan.
     def is_smtp
       @raw['is_smtp']
     end
@@ -254,7 +254,7 @@ module VPNDetection
     end
 
     # Whether a web server answered on the address, on port 80 or 443, or nil
-    # when your plan does not include it. On every paid plan.
+    # when your plan does not include it. On a paid plan.
     def is_web
       @raw['is_web']
     end
@@ -265,7 +265,7 @@ module VPNDetection
     end
 
     # Whether an open DNS resolver answered on the address, or nil when your
-    # plan does not include it. On every paid plan.
+    # plan does not include it. On a paid plan.
     def is_dns_resolver
       @raw['is_dns_resolver']
     end
@@ -276,7 +276,7 @@ module VPNDetection
     end
 
     # Whether a BitTorrent client was seen on the address in the last 90 days,
-    # or nil when your plan does not include it. On every paid plan.
+    # or nil when your plan does not include it. On a paid plan.
     def is_bittorrent
       @raw['is_bittorrent']
     end
@@ -286,13 +286,13 @@ module VPNDetection
       @raw['is_bittorrent'] == true
     end
 
-    # Detail for `is_vpn`: provider, last_seen and confidence. Every paid plan.
+    # Detail for `is_vpn`: provider, last_seen and confidence. On a paid plan.
     # `method` is deprecated: no plan is answered with it since 2026-10-20.
     def vpn
       @raw['vpn']
     end
 
-    # Detail for `is_hosting`. Every paid plan.
+    # Detail for `is_hosting`. On a paid plan.
     def hosting
       @raw['hosting']
     end
@@ -307,7 +307,7 @@ module VPNDetection
       @raw['tor']
     end
 
-    # Detail for `is_cdn`. Every paid plan.
+    # Detail for `is_cdn`. On a paid plan.
     def cdn
       @raw['cdn']
     end
@@ -315,23 +315,23 @@ module VPNDetection
     # Detail for `is_bot`: provider, provider_name, agents, categories,
     # verified, identity, verified_by, confidence, first_seen and last_seen.
     # agents and categories are lists, in the order served, and `[]` where none
-    # is known; verified_by is an empty string when verified is false. Every
+    # is known; verified_by is an empty string when verified is false. On a
     # paid plan.
     def bot
       @raw['bot']
     end
 
-    # Detail for `is_resproxy`. Every paid plan.
+    # Detail for `is_resproxy`. On a paid plan.
     def resproxy
       @raw['resproxy']
     end
 
-    # Detail for `is_dcproxy`. Every paid plan.
+    # Detail for `is_dcproxy`. On a paid plan.
     def dcproxy
       @raw['dcproxy']
     end
 
-    # Detail for `is_mobproxy`. Every paid plan.
+    # Detail for `is_mobproxy`. On a paid plan.
     def mobproxy
       @raw['mobproxy']
     end
@@ -340,50 +340,50 @@ module VPNDetection
     # num_proxies, last_seen and last_usable. num_ports is 0 when the address
     # is only an exit and num_proxies 0 when it is only an entry; last_usable is
     # an empty string when no request through a proxy on the address was
-    # answered. Every paid plan.
+    # answered. On a paid plan.
     def pubproxy
       @raw['pubproxy']
     end
 
-    # Detail for `is_carrier`: name, mcc, mnc, country and confidence. Every
+    # Detail for `is_carrier`: name, mcc, mnc, country and confidence. On a
     # paid plan.
     def carrier
       @raw['carrier']
     end
 
     # Detail for `is_satellite`: provider, provider_name, orbit, segment,
-    # country, asn and confidence. Every paid plan.
+    # country, asn and confidence. On a paid plan.
     def satellite
       @raw['satellite']
     end
 
     # Detail for `is_ssh`: port, banner, host_key_fp, session_ok, first_seen and
-    # last_seen. Every paid plan.
+    # last_seen. On a paid plan.
     def ssh
       @raw['ssh']
     end
 
     # Detail for `is_smtp`: port, banner, session_ok, first_seen and last_seen.
-    # Every paid plan.
+    # On a paid plan.
     def smtp
       @raw['smtp']
     end
 
     # Detail for `is_web`: a row per port that answered, lowest first, and `[]`
-    # when the flag is false. Every paid plan.
+    # when the flag is false. On a paid plan.
     def web
       @raw['web']
     end
 
     # Detail for `is_dns_resolver`: port, recursion_available, rcode,
-    # answer_correct, first_seen and last_seen. Every paid plan.
+    # answer_correct, first_seen and last_seen. On a paid plan.
     def dns_resolver
       @raw['dns_resolver']
     end
 
     # Detail for `is_bittorrent`: verified, id_matches_ip, first_seen,
     # last_seen, last_reachable, days_seen, num_ports, peak_num_ports, indexer
-    # and clients. Every paid plan.
+    # and clients. On a paid plan.
     def bittorrent
       @raw['bittorrent']
     end
@@ -391,7 +391,7 @@ module VPNDetection
     # Where the address is: continent, country, timezone, the country's
     # currency and flag, as a wire hash (`result.location['country']`). Every
     # answer, with or without a key; the region, city, postal code, coordinates
-    # and the rest of the finer members on every paid plan.
+    # and the rest of the finer members on a paid plan.
     def location
       @raw['location']
     end
@@ -405,7 +405,7 @@ module VPNDetection
     end
 
     # Who uses the address: name, domain, type and country, as a wire hash.
-    # Every paid plan.
+    # On a paid plan.
     def company
       @raw['company']
     end
@@ -417,7 +417,7 @@ module VPNDetection
     end
 
     # Where to report abuse from the address: email, name, phone, address,
-    # country, network, validated and unvalidated_since, as a wire hash. Every
+    # country, network, validated and unvalidated_since, as a wire hash. On a
     # paid plan.
     def abuse
       @raw['abuse']
