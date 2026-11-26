@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.22.1 - 2026-11-26
+
+### Fixes
+
+- Middleware: a condition on the verdict is no plan gap for a request that sent no agent ([`4da1308`](https://github.com/vpndetection-io/sdk-ruby/commit/4da130841d12d74cdfe8b4830591cc3fa67fb900))
+
 ## 5.22.0 - 2026-11-26
 
 ### Features
