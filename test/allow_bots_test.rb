@@ -216,6 +216,34 @@ class AllowBotsTest < Minitest::Test
     assert browser.blocked?, 'a browser on that address is judged as the condition says'
   end
 
+  # A request that sent no agent has no verdict to lack, so a condition naming
+  # `user_agent` is no plan gap for it, and `on_missing_field: :raise` does not
+  # fail every browser. With it off the condition can never match, and says so.
+  def test_a_condition_on_the_verdict_is_no_plan_gap_for_a_request_that_sent_no_agent
+    @verdict = 'spoofed'
+    forged = { user_agent: { verdict: 'spoofed' } }
+    [{ 'User-Agent' => CHROME }, {}].each do |headers|
+      @queries.clear
+      warnings = []
+      subject = core(allow_bots: true, block_condition: forged, on_missing_field: :raise,
+                     on_warn: ->(m) { warnings << m })
+
+      refute subject.evaluate(Req.new(headers)).blocked?, headers.inspect
+      assert_equal [nil], agents_sent
+      assert_empty warnings
+    end
+
+    @queries.clear
+    subject = core(allow_bots: true, block_condition: forged, on_missing_field: :raise)
+    (1..4).each { |n| subject.evaluate(examplebot(n)) }
+    refute subject.evaluate(examplebot(5)).blocked?, 'past the bound, no gap either'
+    assert_nil agents_sent.last
+
+    warned = []
+    core(block_condition: forged, on_warn: ->(m) { warned << m }).evaluate(Req.new)
+    assert_equal 1, warned.length, 'off, a condition on the verdict can never match, and says so'
+  end
+
   # The hour runs from an address's first agent: a fourth one, added late, does
   # not restart it.
   def test_an_address_forgets_its_agents_an_hour_after_its_first

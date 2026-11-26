@@ -157,7 +157,7 @@ module VPNDetection
         report_unanswered_agent(result) unless claim&.agent.nil?
         return Lookup.new(blocked: false, ip: ip, result: result) if @condition.nil?
 
-        report_missing(result)
+        report_missing(result, sent: !claim&.agent.nil?)
         Lookup.new(
           blocked: Condition.matches?(@condition, result) && !verified?(result, claim),
           ip: ip,
@@ -175,13 +175,15 @@ module VPNDetection
         result.user_agent.is_a?(Hash) && result.user_agent['verdict'] == 'verified'
       end
 
-      def report_missing(result)
+      def report_missing(result, sent:)
         return if @on_missing_field == :ignore
         # A bogon is answered locally in the widest shape, which carries every
         # member but `user_agent`, and no agent is sent for it.
         return if result.bogon?
 
         missing = Condition.missing_members(@condition, result)
+        # A request that sent no agent has no verdict to lack, whatever the plan serves.
+        missing -= ['user_agent'] if @allow_bots && !sent
         return if missing.empty?
 
         message = "block_condition names #{missing.join(', ')}, which your plan does not " \
