@@ -1,16 +1,21 @@
 # frozen_string_literal: true
 
 require_relative 'test_helper'
+require 'minitest/mock'
 require 'vpndetection/middleware'
 
-# `allow_bots`: the request's own User-Agent goes with its lookup, and a crawler
-# whose operator vouches for the address is never refused. Every request comes
-# from a public peer, since a bogon is answered locally with nothing sent.
+# `allow_bots`: a crawler's User-Agent goes with its lookup, at most four an
+# address, and a crawler whose operator vouches for the address is never refused.
+# Every request comes from a public peer, since a bogon is answered locally with
+# nothing sent.
 class AllowBotsTest < Minitest::Test
   include TestHelper
 
   PEER = '66.249.66.1'
   GOOGLEBOT = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+  CHROME = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ' \
+           'Chrome/151.0.0.0 Safari/537.36'
+  CRAWLER_AGENTS = TestHelper::CORPUS.fetch('crawlerAgents')
 
   Req = Struct.new(:headers, :ip) do
     def initialize(headers = {}, ip = PEER)
@@ -25,16 +30,19 @@ class AllowBotsTest < Minitest::Test
     )
   end
 
-  # Answers every lookup as a hosting address, with the verdict this test set
-  # for the agent it was sent, or none; and records the query each one carried.
+  # Answers every lookup as a hosting bot address, with the verdict this test set
+  # for the agent it was sent, or none, and the `bot` detail it set; and records
+  # the query each one carried.
   def setup
     @verdict = 'verified'
+    @bot = nil
     @queries = []
     @server = TestServer.new(delay: 0) do |target, _body|
       path, query = target.split('?', 2)
       query = URI.decode_www_form(query.to_s).to_h
       @queries << query
-      body = { 'ip' => path[1..], 'is_vpn' => false, 'is_hosting' => true }
+      body = { 'ip' => path[1..], 'is_vpn' => false, 'is_hosting' => true, 'is_bot' => true }
+      body['bot'] = @bot if @bot
       agent = query['user_agent']
       body['user_agent'] = { 'agent' => 'Googlebot', 'kind' => 'bot', 'verdict' => @verdict } if agent && @verdict
       [200, JSON.generate(body)]
@@ -52,6 +60,18 @@ class AllowBotsTest < Minitest::Test
 
   def crawler
     Req.new({ 'User-Agent' => GOOGLEBOT })
+  end
+
+  def examplebot(number, ip = PEER)
+    Req.new({ 'User-Agent' => "Mozilla/5.0 (compatible; Examplebot/#{number}.0)" }, ip)
+  end
+
+  def agent_sent(number)
+    "Mozilla/5.0 (compatible; Examplebot/#{number}.0)"
+  end
+
+  def agents_sent
+    @queries.map { |query| query['user_agent'] }
   end
 
   def test_the_requests_own_user_agent_reaches_the_origin
@@ -152,5 +172,60 @@ class AllowBotsTest < Minitest::Test
     VPNDetection::Middleware::Core.new(->(r) { r.ip }, client: client, allow_bots: true).evaluate(request)
 
     assert_equal [{ 'user_agent' => GOOGLEBOT }], @queries
+  end
+
+  def test_only_an_agent_naming_a_crawler_is_sent_as_the_corpus_says
+    refute_empty CRAWLER_AGENTS['crawlers']
+    refute_empty CRAWLER_AGENTS['others']
+    CRAWLER_AGENTS['crawlers'].each { |agent| assert VPNDetection::Middleware.names_crawler?(agent), agent }
+    CRAWLER_AGENTS['others'].each { |agent| refute VPNDetection::Middleware.names_crawler?(agent), agent }
+    CRAWLER_AGENTS['terms'].each do |term|
+      assert VPNDetection::Middleware.names_crawler?("x #{term.upcase} y"), term
+    end
+
+    subject = core(allow_bots: true, block_condition: { is_bot: true })
+    lookup = subject.evaluate(Req.new({ 'User-Agent' => CHROME }))
+
+    assert_equal [nil], agents_sent, "a browser's agent stays off the lookup"
+    assert lookup.blocked?
+  end
+
+  def test_one_address_is_looked_up_with_at_most_four_crawler_agents_and_none_passes_past_them
+    assert_equal 4, VPNDetection::Middleware::MAX_AGENTS_PER_ADDRESS
+    subject = core(allow_bots: true, block_condition: { is_bot: true })
+    (1..4).each { |n| refute subject.evaluate(examplebot(n)).blocked?, "agent #{n}" }
+
+    past = subject.evaluate(examplebot(5))
+    assert past.blocked?, 'an agent past the bound is never let through as verified'
+    assert_nil past.result.user_agent
+    refute subject.evaluate(examplebot(1)).blocked?, 'a known agent is still sent'
+    assert_equal [1, 2, 3, 4, nil, 1].map { |n| n && agent_sent(n) }, agents_sent
+
+    other = subject.evaluate(examplebot(5, '66.249.66.2'))
+    refute other.blocked?, 'each address has its own bound'
+    assert_equal agent_sent(5), agents_sent.last
+  end
+
+  def test_past_the_bound_an_address_its_operator_vouches_for_still_passes
+    @bot = { 'verified' => true }
+    subject = core(allow_bots: true, block_condition: { is_bot: true })
+    (1..5).each { |n| refute subject.evaluate(examplebot(n)).blocked?, "agent #{n}" }
+
+    assert_nil agents_sent.last
+    browser = subject.evaluate(Req.new({ 'User-Agent' => CHROME }))
+    assert browser.blocked?, 'a browser on that address is judged as the condition says'
+  end
+
+  # The hour runs from an address's first agent: a fourth one, added late, does
+  # not restart it.
+  def test_an_address_forgets_its_agents_an_hour_after_its_first
+    subject = core(allow_bots: true, block_condition: { is_bot: true })
+    start = Time.now
+    at = ->(seconds, &block) { Time.stub(:now, start + seconds, &block) }
+    at.call(0) { (1..3).each { |n| subject.evaluate(examplebot(n)) } }
+    at.call(3000) { subject.evaluate(examplebot(4)) }
+
+    at.call(3599) { assert subject.evaluate(examplebot(5)).blocked?, 'still inside the first one\'s hour' }
+    at.call(3601) { refute subject.evaluate(examplebot(5)).blocked?, 'forgotten, so a new agent is sent' }
   end
 end
