@@ -13,6 +13,8 @@ class MiddlewareTest < Minitest::Test
   include TestHelper
 
   PUBLIC_IP = '45.83.91.1'
+  ASN = { 'asn' => 9009, 'name' => 'M247 Europe SRL', 'domain' => 'm247global.com', 'type' => 'hosting',
+          'prefix' => '146.70.116.0/24', 'country' => 'US', 'rpki_status' => 'valid' }.freeze
   MIDDLEWARE = TestHelper::CORPUS['middleware']
 
   # The least a framework can offer, so the core is exercised without one.
@@ -136,6 +138,43 @@ class MiddlewareTest < Minitest::Test
                   block_condition: { 'is_hosting' => true }, on_missing_field: :raise)
     error = assert_raises(ArgumentError) { strict.evaluate(Req.new) }
     assert_match(/does not include/, error.message)
+  end
+
+  # The members Unlimited leaves out, which the spec stopped requiring in 2026.11.26: a
+  # condition on one never matches and is reported by its path, never read as a value, and
+  # the cached answer says the same as the first.
+  def test_a_condition_on_the_as_type_or_is_bot_under_an_answer_without_them_is_reported_by_its_path
+    keyless = { 'ip' => PUBLIC_IP, 'is_vpn' => true, 'asn' => ASN.except('type') }
+    { { 'asn' => { 'type' => 'hosting' } } => 'asn.type', { 'is_bot' => true } => 'is_bot',
+      { asn: { type: %w[hosting isp] } } => 'asn.type' }.each do |condition, path|
+      serving(keyless)
+      client = VPNDetection::Client.new(retries: 0) # cached, as the default is
+      warnings = []
+      subject = core(client: client, ip_selector: ->(_r) { PUBLIC_IP }, block_condition: condition,
+                     on_warn: ->(m) { warnings << m })
+
+      lookups = Array.new(2) { subject.evaluate(Req.new) }
+
+      assert(lookups.none?(&:blocked?), "#{condition}: never matches")
+      assert_equal 1, warnings.length, "#{condition}: once"
+      assert_match(/names #{Regexp.escape(path)}, which your plan does not include/, warnings.first)
+      assert_raises(ArgumentError, "#{condition}: raised") do
+        core(client: client, ip_selector: ->(_r) { PUBLIC_IP }, block_condition: condition,
+             on_missing_field: :raise).evaluate(Req.new)
+      end
+      Typhoeus::Expectation.clear
+    end
+  end
+
+  def test_a_condition_on_the_as_type_is_matched_where_it_is_served_and_no_plan_gap
+    client, = serving({ 'ip' => PUBLIC_IP, 'is_vpn' => false, 'asn' => ASN })
+    warnings = []
+    lookup = core(client: client, ip_selector: ->(_r) { PUBLIC_IP },
+                  block_condition: { asn: { type: 'hosting' } }, on_warn: ->(m) { warnings << m })
+                 .evaluate(Req.new)
+
+    assert lookup.blocked?
+    assert_empty warnings
   end
 
   def test_symbol_keys_work_as_well_as_strings

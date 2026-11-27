@@ -247,6 +247,9 @@ class ClientTest < Minitest::Test
     'an AS without its RPKI status' => { 'asn' => WHOLE_ASN.except('rpki_status') },
     'an AS with a null country' => { 'asn' => WHOLE_ASN.merge('country' => nil) },
     'an AS with a null RPKI status' => { 'asn' => WHOLE_ASN.merge('rpki_status' => nil) },
+    # Not required since 2026.11.26, but served it is a string, and never null.
+    'an AS type of 1' => { 'asn' => WHOLE_ASN.merge('type' => 1) },
+    'an AS with a null type' => { 'asn' => WHOLE_ASN.merge('type' => nil) },
   }.freeze
 
   # The answer the AS cases above are cut from is read, so their refusal is
@@ -255,6 +258,28 @@ class ClientTest < Minitest::Test
     stub_lookups('1.1.1.1' => { body: { 'ip' => '1.1.1.1', 'is_vpn' => false, 'asn' => WHOLE_ASN } })
 
     assert_equal WHOLE_ASN, VPNDetection::Client.new(cache: false, retries: 0).lookup('1.1.1.1').asn
+  end
+
+  # Unlimited's answer carries no `type` for its AS, which the spec stopped requiring in
+  # 2026.11.26: it reads, on a lookup, my_ip and a batch entry alike, as absent, and reads as
+  # served where a plan carries it.
+  def test_an_as_without_its_type_is_read_and_one_with_it_reads_as_served
+    without = WHOLE_ASN.except('type')
+    plain = { 'ip' => '1.1.1.1', 'is_vpn' => false, 'asn' => without }
+    served = { 'ip' => '2.2.2.2', 'is_vpn' => false, 'asn' => WHOLE_ASN }
+    stub_lookups('1.1.1.1' => { body: plain }, '2.2.2.2' => { body: served }, 'myip' => { body: plain })
+    client = VPNDetection::Client.new(cache: false, retries: 0)
+
+    {
+      'a lookup' => client.lookup('1.1.1.1'),
+      'my_ip' => client.my_ip,
+      'a batch entry' => client.lookup_batch(%w[1.1.1.1]).fetch('1.1.1.1'),
+    }.each do |name, result|
+      assert_kind_of VPNDetection::Result, result, name
+      assert_equal without, result.asn, name
+      refute result.asn.key?('type'), "#{name}: the AS's type is absent, not an empty string"
+    end
+    assert_equal 'hosting', client.lookup('2.2.2.2').asn['type']
   end
 
   # Through 5.9.0 a member of the wrong type, or a null the spec does not
@@ -348,6 +373,10 @@ class ClientTest < Minitest::Test
       schema = schemas.fetch(name)
 
       assert_equal schema.fetch('required', []).sort, members.map(&:to_s).sort, name
+      VPNDetection::Transport::NEVER_NULL.fetch(name, []).each do |member|
+        assert_includes schema.fetch('properties').keys, member.to_s, "#{name}.#{member}"
+        refute_includes members, member, "#{name}.#{member} is required"
+      end
       schema.fetch('properties').each do |member, property|
         [property['items'], property['additionalProperties'], property.dig('additionalProperties', 'items')].compact.each do |inner|
           refute inner['nullable'], "#{name}.#{member}: a nullable entry"

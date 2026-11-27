@@ -163,7 +163,9 @@ class ConformanceTest < Minitest::Test
     stub_lookups(unlimited['body']['ip'] => { body: unlimited['body'] })
     result = VPNDetection::Client.new.lookup(unlimited['body']['ip'])
 
-    assert result.bot?
+    assert_nil result.is_bot
+    refute result.bot?
+    refute result.included?(:is_bot)
     assert_nil result.bot
     refute result.included?(:bot)
   end

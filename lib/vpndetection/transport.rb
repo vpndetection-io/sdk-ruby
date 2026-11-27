@@ -344,7 +344,7 @@ module VPNDetection
       'BitTorrentDetail' => [],
       'Location' => %i[continent continent_name country country_name timezone currency_code currency_name
                        currency_symbol flag_emoji flag_unicode],
-      'Asn' => %i[asn name domain type prefix country rpki_status],
+      'Asn' => %i[asn name domain prefix country rpki_status],
       'Company' => %i[name domain],
       'AbuseContact' => %i[email],
       'UserAgentVerdict' => %i[agent kind verdict],
@@ -365,6 +365,13 @@ module VPNDetection
       'DownloadList' => %i[downloads],
       'Download' => %i[dataset_id format outcome sample open bytes http_status apikey_id client_ip user_agent
                        created],
+    }.freeze
+
+    # The members the spec stopped requiring in 2026.11.26, because Unlimited's answer leaves
+    # them out: absent reads as absent, as any member a plan leaves out does. A served null
+    # is still refused, as it was while they were required.
+    NEVER_NULL = {
+      'Asn' => %i[type],
     }.freeze
 
     # RFC 3339's full-date, the spec's `date`, and its date-time, the spec's
@@ -423,11 +430,14 @@ module VPNDetection
     end
 
     # A member absent or null reads as absent, unless the spec requires it and
-    # does not make it nullable.
+    # does not make it nullable, or {NEVER_NULL} lists it and the answer carries it null.
     def self.check_member!(model, attr, member, value, where)
       key = model.attribute_map[attr].to_s
       return check_type!(value[key], member.to_s, "#{where}.#{key}") unless value[key].nil?
-      return true unless REQUIRED.fetch(model.name.split('::').last).include?(attr)
+
+      name = model.name.split('::').last
+      null_refused = value.key?(key) && NEVER_NULL.fetch(name, []).include?(attr)
+      return true unless REQUIRED.fetch(name).include?(attr) || null_refused
       return true if model.openapi_nullable.include?(attr)
 
       raise TypeError, "#{where}.#{key} is #{value.key?(key) ? 'null' : 'missing'}"

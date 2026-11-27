@@ -24,6 +24,9 @@ module VPNDetection
     module Condition
       BOUND_KEYS = %w[gte gt lte lt].freeze
 
+      # The objects every plan answers whose members a plan can still leave out.
+      PARTLY_PAID = %w[asn].freeze
+
       module_function
 
       # Whether an answer satisfies the condition, and should therefore be
@@ -32,26 +35,22 @@ module VPNDetection
         Array(wrap(condition)).any? { |one| matches_object?(one, result.raw) }
       end
 
-      # The top-level members a condition names that this answer did not carry.
+      # The members a condition names that this answer did not carry: a top-level
+      # member, or the AS's paid one, `asn.type`, by its path.
       #
       # A field your plan does not include is absent rather than false, so a
       # condition naming one can never match and the block would silently never
       # fire. Gating is per top-level member, which is why only the first path
       # segment is checked: a detail object present but empty is a real answer
-      # meaning the flag is false, not a plan gap.
+      # meaning the flag is false, not a plan gap. `asn` is the one object every
+      # plan gets that also holds a paid member (`type`), so it is read member by
+      # member, and a populated one carries every other.
       #
       # A locally answered bogon needs no special case: it is synthesized in the
       # widest shape, so every member is present and nothing reads as missing.
       def missing_members(condition, result)
         missing = []
-        wrap(condition).each do |one|
-          one.each do |member, want|
-            name = member.to_s
-            next if constraint_count(want).zero? || missing.include?(name)
-
-            missing << name unless result.raw.key?(name)
-          end
-        end
+        wrap(condition).each { |one| collect_missing(one, result.raw, '', missing) }
         missing
       end
 
@@ -87,6 +86,23 @@ module VPNDetection
 
       def wrap(condition)
         condition.is_a?(Array) ? condition : [condition]
+      end
+
+      def collect_missing(condition, value, prefix, missing)
+        condition.each do |member, want|
+          next if constraint_count(want).zero?
+
+          name = member.to_s
+          path = "#{prefix}#{name}"
+          unless value.key?(name)
+            missing << path unless missing.include?(path)
+            next
+          end
+          got = value[name]
+          next unless prefix.empty? && PARTLY_PAID.include?(name) && want.is_a?(Hash) && !bound?(want)
+
+          collect_missing(want, got, "#{path}.", missing) if got.is_a?(Hash) && !got.empty?
+        end
       end
 
       def matches_object?(condition, value)
