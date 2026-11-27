@@ -34,8 +34,8 @@ module VPNDetection
 
     # Where the address is, and the AS announcing it: every answer carries both,
     # with or without a key, each member present, an empty string or AS 0 where
-    # nothing is known. The location's finer members, from `region` down, are a
-    # paid plan's, and absent on an answer without them.
+    # nothing is known. The location's finer members, from `region` down, and the
+    # AS's `type` are a paid plan's, and absent on an answer without them.
     LOCATION = %w[
       continent continent_name country country_name timezone currency_code currency_name currency_symbol
       flag_emoji flag_unicode region region_code city postal_code latitude longitude accuracy_radius
@@ -140,8 +140,7 @@ module VPNDetection
 
     # Whether an automated client uses the address, such as a search engine's
     # or an AI company's crawler, an uptime monitor, an internet scanner or a
-    # webhook sender, or nil when your plan does not include it. Every answer,
-    # with or without a key.
+    # webhook sender, or nil when your plan does not include it. On a paid plan.
     def is_bot
       @raw['is_bot']
     end
@@ -399,7 +398,8 @@ module VPNDetection
     # The AS announcing the address: asn, name, domain, type, prefix, the
     # country its registry assigned it to and the announcement's RPKI status, as
     # a wire hash (`result.asn['name']`), with asn 0 where none does. Every
-    # answer, with or without a key.
+    # answer, with or without a key; `type` on a paid plan, and absent without
+    # one.
     def asn
       @raw['asn']
     end
