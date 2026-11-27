@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.23.0 - 2026-11-27
+
+### Features
+
+- Read a keyless answer without the AS's type ([`cf0ebe3`](https://github.com/vpndetection-io/sdk-ruby/commit/cf0ebe31f818ee1f6278af132d11b9b1ed38265e))
+
 ## 5.22.1 - 2026-11-26
 
 ### Fixes

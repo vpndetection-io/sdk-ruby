@@ -1,5 +1,5 @@
 # frozen_string_literal: true
 
 module VPNDetection
-  VERSION = '5.22.1'
+  VERSION = '5.23.0'
 end
