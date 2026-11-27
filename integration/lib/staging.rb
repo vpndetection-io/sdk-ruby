@@ -57,7 +57,7 @@ module Staging
       optional: %w[region region_code city postal_code latitude longitude accuracy_radius geoname_id dma_code
                    last_changed],
     },
-    'asn' => { required: %w[asn name domain type prefix country rpki_status] },
+    'asn' => { required: %w[asn name domain prefix country rpki_status], optional: %w[type] },
     'company' => { required: %w[name domain], optional: %w[type country] },
     'abuse' => { required: %w[email], optional: %w[name phone address country network validated unvalidated_since] },
   }.freeze
@@ -190,6 +190,8 @@ module StagingAssertions
     Staging::OBJECTS.each do |name, spec|
       assert_keys(tier, raw[name], name, spec) if raw.key?(name)
     end
+    # The AS's type is a paid plan's, so it may be absent or served, and served it is a string.
+    assert_kind_of String, raw['asn']['type'], "#{tier}: asn.type must be a string" if raw['asn']&.key?('type')
   end
 
   def assert_web(tier, raw)
