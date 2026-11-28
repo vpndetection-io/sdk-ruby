@@ -46,8 +46,9 @@ module VPNDetection
       # plan gets that also holds a paid member (`type`), so it is read member by
       # member, and a populated one carries every other.
       #
-      # A locally answered bogon needs no special case: it is synthesized in the
-      # widest shape, so every member is present and nothing reads as missing.
+      # A locally answered bogon is synthesized in the widest shape, but it
+      # carries no user agent verdict, which only a sent agent earns: the core
+      # never asks this of a bogon's answer (report_missing returns first).
       def missing_members(condition, result)
         missing = []
         wrap(condition).each { |one| collect_missing(one, result.raw, '', missing) }
