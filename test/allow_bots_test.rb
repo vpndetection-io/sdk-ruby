@@ -166,6 +166,27 @@ class AllowBotsTest < Minitest::Test
     assert_match(/not a public address/, warnings.first)
   end
 
+  # A bogon peer, local development behind no proxy, is answered locally in the
+  # widest shape and carries no verdict, and that is no plan gap: a condition on
+  # `user_agent` must neither raise nor warn of one for a crawler's request there.
+  def test_a_bogon_peer_with_a_crawler_agent_is_no_plan_gap
+    forged = { user_agent: { verdict: 'spoofed' } }
+    %w[127.0.0.1 10.0.0.1 ::1].each do |peer|
+      %i[raise warn].each do |action|
+        warnings = []
+        subject = core(allow_bots: true, block_condition: forged, on_missing_field: action,
+                       on_warn: ->(m) { warnings << m })
+        lookup = subject.evaluate(Req.new({ 'User-Agent' => GOOGLEBOT }, peer))
+
+        refute lookup.blocked?, "#{peer}, #{action}: a bogon is never refused"
+        assert_nil lookup.error, "#{peer}, #{action}: reported a plan gap for a bogon"
+        assert lookup.result.bogon?, "#{peer}, #{action}: the answer is the bogon's own"
+        assert_empty(warnings.grep(/does not include/), "#{peer}, #{action}: warned of a plan gap")
+        assert_empty @queries, "#{peer}, #{action}: a bogon reached the origin"
+      end
+    end
+  end
+
   def test_the_default_reader_takes_a_rack_style_requests_user_agent
     request = Struct.new(:user_agent, :ip).new(GOOGLEBOT, PEER)
     client = VPNDetection::Client.new(base_url: @server.base_url, cache: false, retries: 0)
