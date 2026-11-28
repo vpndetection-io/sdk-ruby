@@ -17,10 +17,12 @@ module VPNDetection
     ENTITLEMENT_PATH = '/api/v1/entitlement'
     BATCH_PATH = '/batch'
 
-    # The longest `timeout` curl holds, in seconds: 2**31 - 1 ms, about 24.8 days.
-    # libcurl refuses a longer one, and any negative, and Ethon ignores the
-    # refusal, so the call would run with no bound at all.
-    LONGEST_TIMEOUT = 2_147_483.647
+    # The longest `timeout` curl holds, in whole seconds: INT_MAX / 1000, about
+    # 24.8 days. libcurl refuses a longer one, and any negative, and Ethon ignores
+    # the refusal, so the call would run with no bound at all. Not 2**31 - 1 ms:
+    # Typhoeus rounds a fraction UP to a whole second, so 2147483.001 reached
+    # libcurl as 2147484 and failed every call with a raw Ethon::Errors::SetOption.
+    LONGEST_TIMEOUT = 2_147_483
 
     # `timeout`, once it is a bound curl can hold: seconds, 0 for none. Refused
     # where it is set, because nothing downstream refuses it: a negative ran with

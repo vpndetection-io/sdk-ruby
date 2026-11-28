@@ -40,10 +40,9 @@ module VPNDetection
     #   phase with it.
     # @raise [ArgumentError] for an `api_key` with a control character in it.
     # @raise [ArgumentError] for a `timeout`, here or on any call, that is
-    #   negative, not a finite number, or past 2147483.647 seconds (2**31 - 1 ms),
-    #   the longest curl holds, for a `retries`, here or on any call, that is
-    #   not an Integer from 0, and for a `concurrency` that is not an Integer
-    #   from 1.
+    #   negative, not a finite number, or past 2147483 seconds, the longest curl
+    #   holds, for a `retries`, here or on any call, that is not an Integer from
+    #   0, and for a `concurrency` that is not an Integer from 1.
     # @param transport [Transport, nil] override the HTTP layer, mostly for tests.
     def initialize(api_key: nil, base_url: DEFAULT_BASE_URL, cache: true,
                    cache_max_size: DEFAULT_CACHE_MAX_SIZE, cache_ttl: DEFAULT_CACHE_TTL,

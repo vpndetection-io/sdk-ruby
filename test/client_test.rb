@@ -568,6 +568,33 @@ class ClientTest < Minitest::Test
     assert_empty calls, 'no refused timeout reached the network'
   end
 
+  # libcurl takes at most 2147483 s (INT_MAX / 1000) and Typhoeus rounds a fraction
+  # UP, so a bound of 2147483.001 reached it as 2147484 and every call failed with
+  # a raw Ethon::Errors::SetOption, though the check let through anything up to
+  # 2**31 - 1 ms (measured on 5.23.0). A stub answers before curl is handed an
+  # option, so the longest bound is proved on a real socket.
+  def test_the_longest_timeout_is_the_longest_one_curl_takes
+    server = TestServer.new(delay: 0)
+    options = { base_url: server.base_url, cache: false, retries: 0 }
+    [2_147_483.001, 2_147_483.5, 2_147_483.647, 2_147_484].each do |value|
+      assert_raises(ArgumentError, "client #{value}") { VPNDetection::Client.new(**options, timeout: value) }
+      client = VPNDetection::Client.new(**options)
+      assert_raises(ArgumentError, "per call #{value}") { client.lookup('8.8.8.8', timeout: value) }
+      assert_raises(ArgumentError, "batch #{value}") { client.lookup_batch(['8.8.8.8', '9.9.9.9'], timeout: value) }
+    end
+    assert_empty server.paths, 'no refused timeout reached the network'
+
+    [2_147_483, 2_147_483.0].each do |value|
+      assert_equal '8.8.8.8', VPNDetection::Client.new(**options, timeout: value).lookup('8.8.8.8').ip, "client #{value}"
+      client = VPNDetection::Client.new(**options)
+      assert_equal '8.8.8.8', client.lookup('8.8.8.8', timeout: value).ip, "per call #{value}"
+      assert_equal %w[8.8.8.8 9.9.9.9], client.lookup_batch(%w[8.8.8.8 9.9.9.9], timeout: value).keys, "batch #{value}"
+    end
+    assert_equal 2_147_483, VPNDetection::Transport::LONGEST_TIMEOUT
+  ensure
+    server&.stop
+  end
+
   # Through 5.11.2 any value was taken: -1 and NaN read as no retries, 1.5 as
   # two, Infinity retried a failing call for good, a String or nil raised a raw
   # ArgumentError out of the failing call, and a bogon answered it per call.
