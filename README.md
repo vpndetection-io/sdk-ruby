@@ -130,7 +130,7 @@ client = VPNDetection::Client.new(cache_max_size: 50_000, cache_ttl: 6 * 60 * 60
 client_no_cache = VPNDetection::Client.new(cache: false)
 ```
 
-An answer with `trial_expired` or `cap_reached` true is cached for a minute at most, so a renewed trial or a raised cap reaches you within a minute.
+An answer with `trial_expired` or `cap_reached` true is cached for a minute at most, because it can change as soon as the organization's trial, plan or cap does.
 
 ### Private and reserved addresses
 
