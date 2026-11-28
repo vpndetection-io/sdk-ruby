@@ -2,6 +2,14 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.23.1 - 2026-11-28
+
+### Fixes
+
+- Refuse a timeout past 2147483 seconds where it is set, never on the first call ([`30304e6`](https://github.com/vpndetection-io/sdk-ruby/commit/30304e6d973e7833f301f91bbf14b995aea4e2fb))
+- Say a reduced answer can change as soon as the organization's trial, plan or cap does ([`8f16b23`](https://github.com/vpndetection-io/sdk-ruby/commit/8f16b2334a4e344f1c12c777d2f1bfd0249a9f9d))
+- Spec 2026.11.27: the free plan's trial is a window, not a UTC day ([`c4a3451`](https://github.com/vpndetection-io/sdk-ruby/commit/c4a34513b177ad51f540ad4c86588f5cf4db0bb0))
+
 ## 5.23.0 - 2026-11-27
 
 ### Features
